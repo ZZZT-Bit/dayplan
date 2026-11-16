@@ -178,6 +178,10 @@ nav button.on{color:var(--acc)}
 .li .info{flex:1;min-width:0}
 .li .n1{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .li .n2{font-size:11.5px;color:var(--tx2);margin-top:2px;font-variant-numeric:tabular-nums}
+.li.off{opacity:.52}
+.wtag{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:6px;background:#eef1f6;
+  color:var(--tx2);font-size:10px;font-weight:600;vertical-align:1px;letter-spacing:0}
+.wtag.off{background:#f6f0e8;color:#a1742c}
 .li .del{width:30px;height:30px;border-radius:8px;border:none;background:#f4f4f2;color:var(--tx2);
   font-size:15px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
 .li .del:active{background:#fde8e3;color:#c85a3c}
@@ -317,6 +321,7 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
       <input type="text" id="cName" placeholder="课程名，如 高等数学">
       <div class="lbl">节次 <span class="phint" id="cPeriodHint">点两下选起止</span></div>
       <div class="picks grid5" id="cPeriods"></div>
+      <input type="text" id="cWeeks" placeholder="周次（可选），如 11-13；留空=每周都上">
       <div class="frow" style="margin-top:10px">
         <input type="text" id="cPlace" placeholder="地点（可选），如 教3-201">
         <button class="btn sm" id="btnAddClass">添加</button>
@@ -327,6 +332,14 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
         <span style="color:var(--tx3);font-size:13px">—</span>
         <input type="time" id="cEnd" value="09:40">
       </div>
+    </div>
+
+    <div class="form">
+      <div class="lbl" style="margin-top:0">这学期的课</div>
+      <div class="phint" style="margin:0 0 9px;display:block">
+        一键填进我这张课表（20 条，带周次）。导进去之后每一条都能改、能删。
+      </div>
+      <button class="btn ghost block sm" id="btnMyTable">📥 导入我的课表</button>
     </div>
 
     <div class="form">
@@ -352,6 +365,15 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
         <div style="flex:1"><div class="lbl" style="margin:0 0 5px">晚饭</div><input type="time" id="sDinner"></div>
       </div>
       <div class="hint" id="crossHint" style="margin-top:10px;display:none"></div>
+    </div>
+
+    <div class="sect">学期与周次</div>
+    <div class="form">
+      <div class="lbl" style="margin-top:0">第 1 周的周一</div>
+      <input type="date" id="sTermStart">
+      <div class="hint" id="termHint" style="margin-top:9px"></div>
+      <button class="linkbtn" id="tglPeriods" style="margin-top:6px">节次规则（点开可调）</button>
+      <div id="periodsBox" style="display:none"></div>
     </div>
 
     <div class="sect">自动排法</div>
@@ -471,14 +493,48 @@ const TYPES = {
 };
 const TYPE_ORDER = ['deep','practice','light','exercise','rest','meal','class','other'];
 
-/* 标准 10 节次（起, 止）。点节次比敲时间快得多。 */
-const PERIODS = [
-  ['08:00','08:45'], ['08:55','09:40'],
-  ['10:00','10:45'], ['10:55','11:40'],
-  ['14:00','14:45'], ['14:55','15:40'],
-  ['16:00','16:45'], ['16:55','17:40'],
-  ['19:00','19:45'], ['19:55','20:40']
-];
+/* 大节按参数算出来，不再写死：
+   len  = 一节大课总时长（90 分钟课 + 中间 5 分钟休息 = 95）
+   gap  = 两节大课之间休息
+   上午/下午/晚上各自有开始时间和节数。
+   默认：上午 08:00 起 2 节 → 下午 14:00 起 2 节 → 晚上 19:00 起 2 节，节间休 30 分钟。 */
+const DEFAULT_PCFG = {
+  len:95, gap:30,
+  amStart:'08:00', amCount:2,
+  pmStart:'14:00', pmCount:2,
+  evStart:'19:00', evCount:2
+};
+function periodCfg(){
+  const o = (state.settings && state.settings.pcfg) || {};
+  const c = Object.assign({}, DEFAULT_PCFG);
+  ['len','gap','amCount','pmCount','evCount'].forEach(k=>{
+    const v = +o[k]; if(isFinite(v) && v >= 0) c[k] = v;
+  });
+  ['amStart','pmStart','evStart'].forEach(k=>{
+    if(o[k] && /^\d{1,2}:\d{2}$/.test(o[k])) c[k] = o[k];
+  });
+  return c;
+}
+function periods(){
+  const c = periodCfg();
+  const out = [];
+  // 每个时段不能压到下一个时段：在下一个时段的开始时间前收手
+  // 注意：start 传进来已经是分钟数，不要再过 t2m
+  const seg = (startMin, count, limitMin)=>{
+    let cur = startMin;
+    for(let i=0;i<count;i++){
+      const end = cur + c.len;
+      if(end > Math.min(limitMin, 1440)) break;
+      out.push({ n:'第'+(out.length+1)+'节', s:m2t(cur), e:m2t(end) });
+      cur = end + c.gap;
+    }
+  };
+  const amS = t2m(c.amStart), pmS = t2m(c.pmStart), evS = t2m(c.evStart);
+  seg(amS, +c.amCount || 0, pmS > amS ? pmS : 1440);
+  seg(pmS, +c.pmCount || 0, evS > pmS ? evS : 1440);
+  seg(evS, +c.evCount || 0, 1440);
+  return out;
+}
 
 /* ---------------- helpers ---------------- */
 const $ = id => document.getElementById(id);
@@ -488,6 +544,54 @@ function ymd(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDat
 function todayStr(){ return ymd(new Date()); }
 function parseYmd(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 function dowOf(str){ const w = parseYmd(str).getDay(); return w===0?7:w; }
+
+/* ---------------- 周次 ----------------
+   一门课只在某些周上（如「11-13」），按学期第一周周一推算当前是第几周。 */
+const DEFAULT_TERM_START = '2026-09-07';   // 第 1 周周一
+function termStart(){ return (state.settings && state.settings.termStart) || DEFAULT_TERM_START; }
+function weekOfDate(dateStr){
+  const diff = Math.round((parseYmd(dateStr) - parseYmd(termStart())) / 86400000);
+  return Math.floor(diff/7) + 1;
+}
+/* "11-13,15" -> Set{11,12,13,15}；空串 -> null（表示每周都上） */
+function parseWeeks(str){
+  if(str==null) return null;
+  const s = String(str).trim();
+  if(!s) return null;
+  const set = new Set();
+  s.split(/[,，、\s]+/).filter(Boolean).forEach(part=>{
+    const m = part.match(/^(\d+)\s*[-~—－–到至]\s*(\d+)$/);
+    if(m){
+      let a=+m[1], b=+m[2]; if(a>b){ const t=a; a=b; b=t; }
+      for(let i=a;i<=b;i++) if(i>0 && i<40) set.add(i);
+    } else if(/^\d+$/.test(part)){
+      const n = +part; if(n>0 && n<40) set.add(n);
+    }
+  });
+  return set.size ? set : null;
+}
+function weekHit(weeksStr, w){
+  const set = parseWeeks(weeksStr);
+  if(!set) return true;              // 没填周次 = 每周都上
+  return set.has(w);
+}
+function weeksLabel(str){
+  const set = parseWeeks(str);
+  if(!set) return '每周';
+  const a = [...set].sort((x,y)=>x-y), parts = [];
+  for(let i=0;i<a.length;){
+    let j=i; while(j+1<a.length && a[j+1]===a[j]+1) j++;
+    parts.push(i===j ? String(a[i]) : a[i]+'-'+a[j]);
+    i=j+1;
+  }
+  return parts.join(',') + '周';
+}
+/* 某天真正要上的课（按周次过滤） */
+function activeCourses(dow, dateStr){
+  const w = weekOfDate(dateStr);
+  return (state.week[dow]||[]).filter(c=> weekHit(c.weeks, w));
+}
+
 function t2m(t){ if(!t) return 0; const p=String(t).split(':'); return (+p[0])*60+(+p[1]||0); }
 function m2t(m){ m=Math.max(0,Math.round(m)); const h=Math.floor(m/60)%24; return pad(h)+':'+pad(m%60); }
 function durText(min){
@@ -503,7 +607,8 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;'
 /* ---------------- state ---------------- */
 let state = {
   settings:{ wake:'07:00', sleep:'23:30', lunch:'12:00', dinner:'18:00',
-             deepLen:90, pracLen:60, lightLen:45, maxDeep:2, buffer:10, lead:10, maxStudy:300 },
+             deepLen:90, pracLen:60, lightLen:45, maxDeep:2, buffer:10, lead:10, maxStudy:300,
+             termStart:DEFAULT_TERM_START, pcfg:null },
   week:{ 1:[],2:[],3:[],4:[],5:[],6:[],7:[] },
   days:{},          // date -> [block]
   done:{},          // date -> [id]
@@ -523,7 +628,8 @@ function load(){
     const o = JSON.parse(raw);
     state = Object.assign(state, o);
     state.settings = Object.assign({wake:'07:00',sleep:'23:30',lunch:'12:00',dinner:'18:00',
-      deepLen:90,pracLen:60,lightLen:45,maxDeep:2,buffer:10,lead:10,maxStudy:300}, o.settings||{});
+      deepLen:90,pracLen:60,lightLen:45,maxDeep:2,buffer:10,lead:10,maxStudy:300,
+      termStart:DEFAULT_TERM_START, pcfg:null}, o.settings||{});
     state.week = Object.assign({1:[],2:[],3:[],4:[],5:[],6:[],7:[]}, o.week||{});
     state.days = o.days||{}; state.done = o.done||{}; state.notified = o.notified||{};
     state.cleared = o.cleared||{}; state.pause = !!o.pause;
@@ -532,8 +638,8 @@ function load(){
 }
 
 /* ---------------- planner ---------------- */
-function normClasses(dow){
-  return (state.week[dow]||[]).map(c=>{
+function normClasses(dow, dateStr){
+  return activeCourses(dow, dateStr).map(c=>{
     let s = t2m(c.start), e = t2m(c.end);
     if(e<=s) e = s+45;
     return { id:'class-'+c.id, type:'class', fixed:true, name:c.name||'上课',
@@ -543,7 +649,7 @@ function normClasses(dow){
 
 function generatePlan(dateStr){
   const st = state.settings;
-  const classes = normClasses(dowOf(dateStr));
+  const classes = normClasses(dowOf(dateStr), dateStr);
   const wake = t2m(st.wake);
 
   // 睡觉时间：早于起床时间说明是「次日凌晨」，换算成 +24h
@@ -737,21 +843,23 @@ function renderToday(){
   const isToday = dateStr === todayStr();
   // 一门课都没录、也没手动加过东西时，不要凭空替你排满一天
   const weekTotal = Object.values(state.week).reduce((a,x)=>a+(x?x.length:0),0);
-  const blocks = (weekTotal || state.days[dateStr]) ? planOf(dateStr) : [];
+  const wk = weekOfDate(dateStr);
+  const active = activeCourses(dw, dateStr);
+  const blocks = (active.length || state.days[dateStr]) ? planOf(dateStr) : [];
 
   // header
   const dt = parseYmd(dateStr);
   $('hdDay').textContent = isToday ? '今天' : (dt.getMonth()+1)+'月'+dt.getDate()+'日';
   const md = (dt.getMonth()+1)+'/'+dt.getDate();
-  $('hdSub').textContent = md + ' · ' + WEEK_FULL[dw-1] + (isToday ? ' · ' + m2t(nowMin()) : '');
+  $('hdSub').textContent = md + ' · ' + WEEK_FULL[dw-1] + ' · 第'+wk+'周' + (isToday ? ' · ' + m2t(nowMin()) : '');
   $('btnToday').classList.toggle('on', isToday);
 
   // banner
   const ban = $('todayBanner');
   if(!weekTotal){
     ban.innerHTML = '<div class="banner"><span>📋</span><span>还没录课表。录一次<b>每周固定课</b>，之后每天自动套用。</span><button id="bnGo">去录入</button></div>';
-  } else if(!(state.week[dw]||[]).length && isToday){
-    ban.innerHTML = '<div class="banner"><span>☀️</span><span>'+WEEK[dw-1]+'没有课，整天都是空闲。</span><button id="bnGo">加一节课</button></div>';
+  } else if(!active.length && isToday){
+    ban.innerHTML = '<div class="banner"><span>☀️</span><span>'+WEEK[dw-1]+' 第'+wk+'周没有课，整天都是空闲。</span><button id="bnGo">加一节课</button></div>';
   } else {
     ban.innerHTML = '';
   }
@@ -776,7 +884,7 @@ function renderToday(){
   const cleared = !!(state.pause || state.cleared[dateStr]);
   const cr = $('clearRow'); if(cr) cr.style.display = blocks.length ? 'flex' : 'none';
   if(!blocks.length){
-    if(cleared && weekTotal){
+    if(cleared && (active.length || weekTotal)){
       tl.innerHTML = '<div class="empty"><div class="big">◷</div>这天的安排已清空。'+
         '<div style="margin-top:16px"><button class="btn sm" id="empRegen">✨ 智能安排</button></div></div>';
     } else {
@@ -895,10 +1003,12 @@ function updateNowBar(blocks, isToday){
 let curDow = dowOf(todayStr());
 
 function renderWeek(){
+  const today = todayStr();
+  const wkNow = weekOfDate(today);
   const chips = $('chips');
   chips.innerHTML = '';
   for(let d=1; d<=7; d++){
-    const n = (state.week[d]||[]).length;
+    const n = activeCourses(d, today).length;
     const b = document.createElement('button');
     b.className = 'chip' + (d===curDow?' on':'') + (n?' dot':'');
     b.innerHTML = WEEK_S[d-1] + '<span class="n">'+(n?n+'节':'空')+'</span>';
@@ -908,23 +1018,28 @@ function renderWeek(){
 
   const list = (state.week[curDow]||[]).slice().sort((a,b)=> t2m(a.start)-t2m(b.start));
   const el = $('wkList');
-  const total = Object.values(state.week).reduce((a,x)=>a+x.length,0);
-  $('wkCount').textContent = total ? '本周共 '+total+' 节' : '还没有课';
+  let totalActive = 0;
+  for(let d=1; d<=7; d++) totalActive += activeCourses(d, today).length;
+  $('wkCount').textContent = Object.values(state.week).some(a=>a&&a.length)
+    ? '第'+wkNow+'周 · 共 '+totalActive+' 节'
+    : '还没有课';
 
   if(!list.length){
     el.innerHTML = '<div class="li"><div class="info"><div class="n1" style="color:var(--tx2);font-weight:500">'+WEEK[curDow-1]+' 没有课</div></div></div>';
   } else {
     el.innerHTML = list.map(c=>{
       const s=t2m(c.start), e=t2m(c.end);
-      return '<div class="li"><div class="bar" style="background:var(--c-class)"></div>'+
-        '<div class="info"><div class="n1">'+esc(c.name)+'</div>'+
+      const on = weekHit(c.weeks, wkNow);
+      return '<div class="li'+(on?'':' off')+'"><div class="bar" style="background:var(--c-class)'+(on?'':';opacity:.28')+'"></div>'+
+        '<div class="info"><div class="n1">'+esc(c.name)+
+          '<span class="wtag'+(on?'':' off')+'">'+esc(weeksLabel(c.weeks))+'</span></div>'+
         '<div class="n2">'+esc(c.start)+'–'+esc(c.end)+(c.place?' · '+esc(c.place):'')+' · '+durText(e-s)+'</div></div>'+
         '<button class="del" data-del="'+c.id+'">✕</button></div>';
     }).join('');
     el.querySelectorAll('[data-del]').forEach(b=>{
       b.onclick = ()=>{
         state.week[curDow] = state.week[curDow].filter(x=>x.id!==b.dataset.del);
-        save(); renderWeek();
+        state.days = {}; state.cleared = {}; save(); renderWeek(); renderToday();
         toast('已删除');
       };
     });
@@ -940,12 +1055,14 @@ let pSel = { a:-1, b:-1 };
 function renderPeriods(){
   const box = $('cPeriods');
   if(!box) return;
+  const P = periods();
   box.innerHTML = '';
-  PERIODS.forEach((p, i)=>{
+  P.forEach((p, i)=>{
     const on = pSel.a >= 0 && i >= pSel.a && i <= pSel.b;
     const btn = document.createElement('button');
     btn.className = 'pick' + (on ? ' on' : '');
-    btn.textContent = i + 1;
+    btn.textContent = p.n;
+    btn.title = p.n + ' ' + p.s + '–' + p.e;
     btn.onclick = ()=>{
       if(pSel.a < 0)          { pSel.a = pSel.b = i; }
       else if(i > pSel.a)     { pSel.b = i; }
@@ -958,7 +1075,7 @@ function renderPeriods(){
   if(!hint) return;
   hint.textContent = pSel.a < 0
     ? '点两下选起止'
-    : '第' + (pSel.a+1) + '–' + (pSel.b+1) + '节 · ' + PERIODS[pSel.a][0] + '–' + PERIODS[pSel.b][1];
+    : P[pSel.a].n + '–' + P[pSel.b].n + ' · ' + P[pSel.a].s + '–' + P[pSel.b].e;
 }
 
 /* ---------------- editing ---------------- */
@@ -1084,10 +1201,34 @@ function openAdd(){
       ? t2m($('edEnd').value)
       : Math.min(s + durMin, 1439);
     if(e<=s){ toast('结束时间要晚于开始时间'); return; }
-    blocks.push({ id:uid(), type:chosen, name:($('edName').value||'').trim()||defaultName(chosen),
-                  place:'', s, e, auto:false });
+    const nmTxt = ($('edName').value||'').trim()||defaultName(chosen);
+    const nb = { id:uid(), type:chosen, name:nmTxt, place:'', s, e, auto:false };
+    // 上课是硬约束：先把和它撞车的块摘掉，避免时间轴重叠
+    let dropped = 0;
+    if(chosen === 'class'){
+      const keep = blocks.filter(b=> !(b.s < e && b.e > s));
+      dropped = blocks.length - keep.length;
+      blocks.length = 0; blocks.push.apply(blocks, keep);
+    }
+    blocks.push(nb);
     blocks.sort((x,y)=>x.s-y.s);
-    save(); closeSheet(); renderToday(); toast('已添加');
+    state.days[curDate] = blocks;          // planOf 在「已清空」时返回的是临时数组，必须落盘
+    // 「上课」块自动同步进周课表，以后每周同一天直接复现
+    let syncMsg = '';
+    if(chosen === 'class'){
+      const dow = dowOf(curDate);
+      if(!state.week[dow]) state.week[dow] = [];
+      const dup = state.week[dow].some(c=> c.name===nmTxt && t2m(c.start)===s && t2m(c.end)===e);
+      if(dup){
+        syncMsg = '（课表里已有）';
+      } else {
+        state.week[dow].push({ id:uid(), name:nmTxt, place:'', start:m2t(s), end:m2t(e) });
+        state.week[dow].sort((a,b)=> t2m(a.start)-t2m(b.start));
+        syncMsg = '，已同步到'+WEEK[dow-1]+'课表';
+      }
+    }
+    save(); closeSheet(); renderToday();
+    toast('已添加'+syncMsg+(dropped ? '，挤掉 '+dropped+' 段' : ''));
   };
   openSheet();
 }
@@ -1302,19 +1443,35 @@ function parseBulk(text){
     let m = line.match(/^(?:周|星期|礼拜)?\s*([一二三四五六日天1-7])\s*[,，.、:：]?\s*(.+)$/);
     if(!m){ failed.push(line); return; }
     const dow = DAYMAP[m[1]];
-    const rest = m[2];
-    const tm = rest.match(/(\d{1,2})\s*[:：]\s*(\d{2})\s*[-~—－–到至]\s*(\d{1,2})\s*[:：]\s*(\d{2})/);
-    if(!tm){ failed.push(line); return; }
-    const s = pad(+tm[1])+':'+tm[2];
-    const e = pad(+tm[3])+':'+tm[4];
-    let name = rest.slice(0, tm.index) + ' ' + rest.slice(tm.index + tm[0].length);
-    name = name.replace(/\s+/g,' ').trim();
+    let rest = m[2];
+    let s = null, e = null, weeks = '';
+    // 行尾的周次：「11-13」「11-13,15」「11-13周」
+    const wm = rest.match(/[\s,，、]*(\d{1,2}\s*[-~—－–]\s*\d{1,2}(?:\s*[,，、]\s*\d{1,2}(?:\s*[-~—－–]\s*\d{1,2})?)*)\s*周?\s*$/);
+    if(wm){ weeks = wm[1].replace(/\s+/g,''); rest = rest.slice(0, wm.index); }
+    // 节次写法：「第2节」「第2-3节」
+    const pm = rest.match(/第\s*(\d{1,2})\s*(?:[-~—－–到至]\s*(\d{1,2}))?\s*[节大]\s*/);
+    if(pm){
+      const P = periods();
+      const a = +pm[1]-1, b = (pm[2] ? +pm[2] : +pm[1]) - 1;
+      if(P[a] && P[b]){
+        s = P[a].s; e = P[b].e;
+        rest = rest.slice(0, pm.index) + ' ' + rest.slice(pm.index + pm[0].length);
+      }
+    }
+    if(!s){
+      const tm = rest.match(/(\d{1,2})\s*[:：]\s*(\d{2})\s*[-~—－–到至]\s*(\d{1,2})\s*[:：]\s*(\d{2})/);
+      if(!tm){ failed.push(line); return; }
+      s = pad(+tm[1])+':'+tm[2];
+      e = pad(+tm[3])+':'+tm[4];
+      rest = rest.slice(0, tm.index) + ' ' + rest.slice(tm.index + tm[0].length);
+    }
+    let name = rest.replace(/\s+/g,' ').trim();
     let place = '';
     const at = name.split(/\s*[@＠]\s*/);
     if(at.length>1){ name = at[0].trim(); place = at.slice(1).join(' ').trim(); }
     name = name.replace(/^[-—:：,，、\s]+|[-—:：,，、\s]+$/g,'');
     if(!name) name = '上课';
-    added.push({dow, c:{ id:uid(), name, place, start:s, end:e }});
+    added.push({dow, c:{ id:uid(), name, place, start:s, end:e, weeks }});
   });
   added.forEach(x=>{
     if(!state.week[x.dow]) state.week[x.dow]=[];
@@ -1333,9 +1490,57 @@ function parseBulk(text){
   return {ok: added.length, fail: failed};
 }
 
+/* ---------------- 我的课表（第 1 周 = 2026-09-07；第 11 周 = 2026-11-16 那周） ----------------
+   格式：[星期, 节次, 课程名, 地点, 周次]
+   只存课程名、地点、周次——不存授课人。同一门课换教室的按周次合并成一条。 */
+const MY_TABLE = [
+  [1,'第二节','石油工程概论','东16-C-310','11-16'],
+  [1,'第二节','互换性与技术测量','东16-B-206','3-9'],
+  [1,'第三节','机械工程测试技术','东13-A-304c','10-16'],
+  [1,'第四节','科技文献检索与利用','东16-B-208','3-11'],
+  [2,'第一节','创新性思维与研究方法','东16-B-209','5-10'],
+  [2,'第二节','热工基础','东16-B-107','2-17'],
+  [2,'第三节','机器人应用基础','东13-A-204c','1-4'],
+  [2,'第四节','机械设计A','东16-B-101','1-13'],
+  [3,'第一节','机械工程测试技术','7教-203','11-13'],
+  [3,'第一节','互换性与技术测量','实验东7教201','7-8'],
+  [3,'第二节','互换性与技术测量','东16-B-206','3-9'],
+  [3,'第三节','机械工程测试技术','东13-A-304c','10-16'],
+  [3,'第四节','PYTHON程序设计','东13-D-223c','12-15'],
+  [3,'第五节','中国传统民居文化','东12-203c','3-12'],
+  [4,'第二节','机械设计A','东16-C-102','1-13'],
+  [5,'第二节','创新性思维与研究方法','东16-B-201','5-10'],
+  [5,'第二节','PYTHON程序设计','东13-D-425c','12-15'],
+  [5,'第三节','机器人应用基础','东13-A-204c','1-4'],
+  [5,'第三节','石油工程概论','东13-A-305c','11-16'],
+  [5,'第三节','机械设计A','实验东7教102','9-10']
+];
+const CN_NUM = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+function importMyTable(){
+  const P = periods();
+  let n = 0;
+  MY_TABLE.forEach(([d, pn, name, place, weeks])=>{
+    const m = String(pn).match(/第\s*([一二三四五六七八九十\d]+)\s*节/);
+    if(!m) return;
+    const idx = (/^\d+$/.test(m[1]) ? +m[1] : CN_NUM[m[1]]) - 1;
+    const p = P[idx];
+    if(!p) return;                      // 节次数改少了，对应课就跳过
+    if(!state.week[d]) state.week[d] = [];
+    const dup = state.week[d].some(c=> c.name===name && t2m(c.start)===t2m(p.s) && t2m(c.end)===t2m(p.e));
+    if(dup) return;
+    state.week[d].push({ id:uid(), name, place, start:p.s, end:p.e, weeks });
+    n++;
+  });
+  for(let d=1; d<=7; d++) (state.week[d]||[]).sort((a,b)=> t2m(a.start)-t2m(b.start));
+  state.settings.termStart = DEFAULT_TERM_START;
+  state.days = {}; state.cleared = {}; state.pause = false; state.seeded = false;
+  save(); renderAll();
+  return n;
+}
+
 /* ---------------- page switch ---------------- */
-const PAGE_TITLE = { pgToday:null, pgWeek:['每周课表','周一至周日各录一次，以后每天自动套用'],
-                          pgSet:['设置','作息、排法、提醒'] };
+const PAGE_TITLE = { pgToday:null, pgWeek:['每周课表','录一次，按周次自动切换'],
+                          pgSet:['设置','作息、周次、排法'] };
 function goPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on', p.id===id));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.pg===id));
@@ -1352,6 +1557,73 @@ function goPage(id){
 }
 
 /* ---------------- settings ---------------- */
+const NUM_FIELD = (id, label, unit, min, max, step)=>{
+  return '<div style="flex:1"><div class="lbl" style="margin:0 0 5px">'+label+'</div>'+
+    '<input type="number" id="'+id+'" min="'+min+'" max="'+max+'" step="'+step+'" '+
+    'style="text-align:center"></div>';
+};
+function renderPeriodEditor(){
+  const box = $('periodsBox');
+  if(!box) return;
+  const c = periodCfg();
+  const P = periods();
+  const preview = P.map(p=> p.n+' '+p.s+'–'+p.e).join('　');
+  box.innerHTML =
+    '<div class="frow" style="margin-top:6px">'+
+      NUM_FIELD('pcLen','一节多长','分',30,180,5)+
+      NUM_FIELD('pcGap','节间休息','分',0,90,5)+
+    '</div>'+
+    '<div class="frow">'+
+      '<div style="flex:1"><div class="lbl" style="margin:0 0 5px">上午开始</div>'+
+        '<input type="time" id="pcAm"></div>'+
+      NUM_FIELD('pcAmN','上午节数','',0,6,1)+
+    '</div>'+
+    '<div class="frow">'+
+      '<div style="flex:1"><div class="lbl" style="margin:0 0 5px">下午开始</div>'+
+        '<input type="time" id="pcPm"></div>'+
+      NUM_FIELD('pcPmN','下午节数','',0,6,1)+
+    '</div>'+
+    '<div class="frow">'+
+      '<div style="flex:1"><div class="lbl" style="margin:0 0 5px">晚上开始</div>'+
+        '<input type="time" id="pcEv"></div>'+
+      NUM_FIELD('pcEvN','晚上节数','',0,6,1)+
+    '</div>'+
+    '<div class="hint" id="pcPreview" style="margin-top:10px"></div>'+
+    '<button class="linkbtn" id="pcReset">恢复默认</button>';
+
+  $('pcLen').value = c.len; $('pcGap').value = c.gap;
+  $('pcAm').value = c.amStart; $('pcAmN').value = c.amCount;
+  $('pcPm').value = c.pmStart; $('pcPmN').value = c.pmCount;
+  $('pcEv').value = c.evStart; $('pcEvN').value = c.evCount;
+  $('pcPreview').innerHTML = preview
+    ? '当前：'+preview
+    : '<span style="color:#c85a3c">节数全是 0，课表页没有节次可选。</span>';
+
+  const commit = ()=>{
+    state.settings.pcfg = {
+      len: +$('pcLen').value || 95,
+      gap: Math.max(0, +$('pcGap').value || 0),
+      amStart: $('pcAm').value || '08:00',
+      amCount: Math.max(0, +$('pcAmN').value || 0),
+      pmStart: $('pcPm').value || '14:00',
+      pmCount: Math.max(0, +$('pcPmN').value || 0),
+      evStart: $('pcEv').value || '19:00',
+      evCount: Math.max(0, +$('pcEvN').value || 0)
+    };
+    state.days = {}; state.cleared = {}; save();
+    renderPeriodEditor(); renderWeek(); renderToday();
+  };
+  ['pcLen','pcGap','pcAm','pcAmN','pcPm','pcPmN','pcEv','pcEvN'].forEach(id=>{
+    const el = $(id); if(el) el.onchange = commit;
+  });
+  $('pcReset').onclick = ()=>{
+    delete state.settings.pcfg;
+    state.days = {}; state.cleared = {}; save();
+    renderPeriodEditor(); renderWeek(); renderToday();
+    toast('已恢复默认节次');
+  };
+}
+
 function fillSettings(){
   const s = state.settings;
   $('sWake').value = s.wake; $('sSleep').value = s.sleep;
@@ -1373,6 +1645,14 @@ function fillSettings(){
   $('sMaxDeep').value = String(s.maxDeep); $('sBuf').value = String(s.buffer);
   $('sMaxStudy').value = String(s.maxStudy || 300);
   $('sLead').value = String(s.lead);
+  $('sTermStart').value = s.termStart || DEFAULT_TERM_START;
+  const wNow = weekOfDate(todayStr());
+  const th = $('termHint');
+  if(th){
+    th.innerHTML = wNow < 1
+      ? '今天是第 '+wNow+' 周 —— 学期还没开始，或第一周日期填错了。'
+      : '今天是<b>第 '+wNow+' 周</b>。课表只排本周要上的课。';
+  }
   const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
   $('btnNotif').textContent = perm==='granted' ? '通知已开启 ✓'
       : perm==='denied' ? '通知被拒绝（需到系统设置里开）'
@@ -1395,6 +1675,18 @@ function bindSettings(){
       toast('已更新，安排已重排');
     };
   });
+  $('sTermStart').onchange = ()=>{
+    state.settings.termStart = $('sTermStart').value || DEFAULT_TERM_START;
+    state.days = {}; save(); renderToday(); renderWeek(); fillSettings();
+    toast('已更新 · 今天是第 '+weekOfDate(todayStr())+' 周');
+  };
+  $('tglPeriods').onclick = ()=>{
+    const b = $('periodsBox');
+    const show = b.style.display === 'none';
+    b.style.display = show ? 'block' : 'none';
+    if(show) renderPeriodEditor();
+    $('tglPeriods').textContent = show ? '收起节次规则' : '节次规则（点开可调）';
+  };
   $('btnNotif').onclick = ()=>{
     if(!('Notification' in window)){ toast('此浏览器不支持通知'); return; }
     Notification.requestPermission().then(p=>{
@@ -1505,30 +1797,39 @@ function bindStatic(){
     row.style.display = manual ? 'flex' : 'none';
     $('cManual').textContent = manual ? '用节次选' : '手动输入时间';
     $('cPeriodHint').textContent = manual ? '' : (pSel.a < 0 ? '点两下选起止' : $('cPeriodHint').textContent);
-    if(manual){ $('cStart').value = PERIODS[0][0]; $('cEnd').value = PERIODS[1][1]; }
+    const P = periods();
+    if(manual){ $('cStart').value = P[0].s; $('cEnd').value = P[1].e; }
   };
 
   $('btnAddClass').onclick = ()=>{
     const nm = ($('cName').value||'').trim();
     if(!nm){ toast('填一下课程名'); return; }
     let s, e;
+    const P = periods();
     if($('cManualRow').style.display !== 'none'){
       s = $('cStart').value; e = $('cEnd').value;
     } else {
       if(pSel.a < 0){ toast('点一下节次'); return; }
-      s = PERIODS[pSel.a][0];
-      e = PERIODS[pSel.b][1];
+      s = P[pSel.a].s;
+      e = P[pSel.b].e;
     }
     if(t2m(e) <= t2m(s)){ toast('结束时间要晚于开始'); return; }
+    const wkStr = ($('cWeeks').value||'').trim();
     if(!state.week[curDow]) state.week[curDow]=[];
-    state.week[curDow].push({ id:uid(), name:nm, place:($('cPlace').value||'').trim(), start:s, end:e });
+    state.week[curDow].push({ id:uid(), name:nm, place:($('cPlace').value||'').trim(),
+                              start:s, end:e, weeks:wkStr });
     state.week[curDow].sort((a,b)=> t2m(a.start)-t2m(b.start));
     state.days = {}; state.cleared = {}; state.pause = false; state.seeded = false;
     save();
-    $('cName').value=''; $('cPlace').value='';
+    $('cName').value=''; $('cPlace').value=''; $('cWeeks').value='';
     pSel = { a:-1, b:-1 };
     renderWeek(); renderToday();
-    toast('已添加');
+    toast('已添加 · '+(wkStr ? weeksLabel(wkStr) : '每周'));
+  };
+
+  $('btnMyTable').onclick = ()=>{
+    const n = importMyTable();
+    toast(n ? '已导入 '+n+' 节课 · 第'+weekOfDate(todayStr())+'周' : '课表里已经有这些课了');
   };
 
   $('btnBulk').onclick = ()=>{
@@ -1604,7 +1905,14 @@ window.__dp = {
   regen(ds){ regen(ds || todayStr()); renderToday(); },
   week(v){ state.week = v; state.days = {}; save(); renderToday(); renderWeek(); },
   alarmTest(){ fireAlarm('测试','提醒通道正常', m2t(nowMin())); },
-  ics(){ return buildICS(curDate); }
+  ics(){ return buildICS(curDate); },
+  // 周次
+  weekOf(ds){ return weekOfDate(ds || todayStr()); },
+  active(dow, ds){ return activeCourses(dow, ds || todayStr()); },
+  myTable(){ return importMyTable(); },
+  goto(ds){ curDate = ds; renderToday(); },
+  periods(){ return periods(); },
+  pcfg(){ return periodCfg(); }
 };
 })();
 </script>
