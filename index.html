@@ -76,12 +76,23 @@ header.scrolled{border-bottom-color:var(--line)}
 .card .tag{color:inherit}
 .card .tag i{color:#fff;font-style:normal;opacity:.95;font-size:10px}
 
-.chk{width:34px;flex:none;align-self:center;height:34px;border-radius:50%;border:1.5px solid var(--line);
-  background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
-  color:var(--tx3);font-size:14px;transition:all .15s}
-.chk.done{background:var(--prac);border-color:var(--prac);color:#fff}
+.chk{width:44px;flex:none;align-self:center;height:44px;border-radius:14px;
+  border:2.5px solid var(--tc,var(--line));background:#fff;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:transform .13s,background .13s,border-color .13s;-webkit-tap-highlight-color:transparent}
 .chk:active{transform:scale(.9)}
+.chk.done{background:var(--tc,var(--prac));border-color:var(--tc,var(--prac));
+  box-shadow:0 3px 10px -3px var(--tc,rgba(0,0,0,.25))}
+.chk.done::after{content:"";width:12px;height:7px;
+  border-left:3px solid #fff;border-bottom:3px solid #fff;
+  transform:rotate(-45deg) translate(1px,-2px);border-radius:1px}
+/* 未完成时画一个很淡的对勾，提示这里可以点 */
+.chk:not(.done)::after{content:"";width:12px;height:7px;
+  border-left:3px solid var(--tc,var(--line));border-bottom:3px solid var(--tc,var(--line));
+  opacity:.17;transform:rotate(-45deg) translate(1px,-2px);border-radius:1px}
 .chk.hide{visibility:hidden}
+.row.is-done .card{opacity:.45}
+.row.is-done .card .nm{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.3)}
 
 .b-class{background:var(--c-class-bg);color:var(--c-class)}
 .b-deep{background:var(--c-deep-bg);color:var(--c-deep)}
@@ -213,6 +224,19 @@ textarea{resize:vertical;min-height:88px;line-height:1.5;font-size:13px}
 .seg button.on{background:var(--tx);border-color:var(--tx);color:#fff}
 .lbl{font-size:11.5px;font-weight:600;color:var(--tx2);margin:14px 0 6px;letter-spacing:.3px}
 
+/* 节次快选 */
+.picks{display:flex;gap:6px;flex-wrap:wrap}
+.picks.grid5{display:grid;grid-template-columns:repeat(5,1fr)}
+.picks.grid4{display:grid;grid-template-columns:repeat(4,1fr)}
+.pick{min-width:36px;height:36px;padding:0 9px;border-radius:10px;border:1.5px solid var(--line);
+  background:#fff;font-size:13px;font-weight:600;color:var(--tx2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s}
+.pick:active{transform:scale(.94)}
+.pick.on{background:var(--tx);border-color:var(--tx);color:#fff}
+.phint{font-weight:400;letter-spacing:0;color:var(--tx3);text-transform:none}
+.linkbtn{background:none;border:none;padding:8px 0 0;font-size:12px;color:var(--tx3);
+  text-decoration:underline;cursor:pointer;align-self:flex-start}
+
 /* alarm overlay */
 .alarm{position:fixed;inset:0;z-index:80;background:rgba(20,20,22,.95);color:#fff;
   display:none;flex-direction:column;align-items:center;justify-content:center;
@@ -279,24 +303,25 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
 
   <!-- 课表 -->
   <div class="page" id="pgWeek">
-    <div class="sect" style="margin-top:14px">每周课表 <span class="sp"></span>
+    <div class="sect" style="margin-top:14px">选哪一天 <span class="sp"></span>
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--tx3)" id="wkCount"></span>
     </div>
     <div class="chips" id="chips"></div>
     <div class="list" id="wkList"></div>
     <div class="form">
       <div class="lbl" style="margin-top:0">添加一节课</div>
-      <div class="frow">
+      <input type="text" id="cName" placeholder="课程名，如 高等数学">
+      <div class="lbl">节次 <span class="phint" id="cPeriodHint">点两下选起止</span></div>
+      <div class="picks grid5" id="cPeriods"></div>
+      <div class="frow" style="margin-top:10px">
+        <input type="text" id="cPlace" placeholder="地点（可选），如 教3-201">
+        <button class="btn sm" id="btnAddClass">添加</button>
+      </div>
+      <button class="linkbtn" id="cManual">手动输入时间</button>
+      <div class="frow" id="cManualRow" style="display:none">
         <input type="time" id="cStart" value="08:00">
         <span style="color:var(--tx3);font-size:13px">—</span>
         <input type="time" id="cEnd" value="09:40">
-      </div>
-      <div class="frow">
-        <input type="text" id="cName" placeholder="课程名，如 高等数学">
-      </div>
-      <div class="frow">
-        <input type="text" id="cPlace" placeholder="地点（可选），如 教3-201">
-        <button class="btn sm" id="btnAddClass">添加</button>
       </div>
     </div>
 
@@ -307,9 +332,6 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
         <button class="btn block sm" id="btnBulk">解析并导入</button>
       </div>
       <div class="hint">每行一节课。<code>周一</code> / <code>星期三</code> / <code>1</code> 都认；<code>@</code> 后面是地点；<code>-</code>、<code>~</code>、<code>到</code> 都能当时间分隔符。</div>
-      <div class="frow" style="margin-top:9px">
-        <button class="btn ghost sm block" id="btnDemo">填入示例课表</button>
-      </div>
     </div>
   </div>
 
@@ -325,6 +347,7 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
         <div style="flex:1"><div class="lbl" style="margin:0 0 5px">午饭</div><input type="time" id="sLunch"></div>
         <div style="flex:1"><div class="lbl" style="margin:0 0 5px">晚饭</div><input type="time" id="sDinner"></div>
       </div>
+      <div class="hint" id="crossHint" style="margin-top:10px;display:none"></div>
     </div>
 
     <div class="sect">自动排法</div>
@@ -443,6 +466,15 @@ const TYPES = {
 };
 const TYPE_ORDER = ['deep','practice','light','exercise','rest','meal','class','other'];
 
+/* 标准 10 节次（起, 止）。点节次比敲时间快得多。 */
+const PERIODS = [
+  ['08:00','08:45'], ['08:55','09:40'],
+  ['10:00','10:45'], ['10:55','11:40'],
+  ['14:00','14:45'], ['14:55','15:40'],
+  ['16:00','16:45'], ['16:55','17:40'],
+  ['19:00','19:45'], ['19:55','20:40']
+];
+
 /* ---------------- helpers ---------------- */
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,'0');
@@ -505,19 +537,23 @@ function generatePlan(dateStr){
   const st = state.settings;
   const classes = normClasses(dowOf(dateStr));
   const wake = t2m(st.wake);
+
+  // 睡觉时间：早于起床时间说明是「次日凌晨」，换算成 +24h
   let sleepM = t2m(st.sleep);
-  if(sleepM <= wake) sleepM = wake + 60*15;
-  sleepM = Math.min(sleepM, 1440);
+  if(sleepM <= wake) sleepM += 1440;
+  // 时间轴只画到当天 24:00
+  const dayEnd = Math.min(sleepM, 1440);
 
   const fixed = classes.slice();
 
-  // ---- 吃饭：撞课就往后顺延到空位 ----
-  function placeMeal(prefMin, dur, name){
-    let s = prefMin;
-    if(s < wake) s = wake;
+  // ---- 吃饭：撞课就在「合理时段」内找空位，绝不错乱到别的饭点 ----
+  // 每顿饭有自己的可接受窗口；窗口内实在挤不下就跳过这顿，而不是顺延到晚上
+  function placeMeal(prefMin, dur, name, winFrom, winTo){
+    let s = Math.max(prefMin, wake, winFrom);
+    const limit = Math.min(winTo, dayEnd);
     for(let guard=0; guard<14; guard++){
       const e = s+dur;
-      if(e > sleepM) return;
+      if(e > limit) return;              // 超出本饭点时窗：这顿不排
       const hit = fixed.find(o=> s<o.e && e>o.s);
       if(!hit){
         fixed.push({id:uid(),type:'meal',fixed:true,name,s,e,place:''});
@@ -526,15 +562,16 @@ function generatePlan(dateStr){
       s = hit.e;
     }
   }
-  placeMeal(wake, 30, '早饭');
-  placeMeal(t2m(st.lunch), 50, '午饭');
-  placeMeal(t2m(st.dinner), 50, '晚饭');
+  const LUNCH = t2m(st.lunch), DINNER = t2m(st.dinner);
+  placeMeal(wake,             30, '早饭', wake,        wake+180);   // 起床后 3 小时内
+  placeMeal(LUNCH,            50, '午饭', LUNCH-90,    LUNCH+180);  // 午饭前后有弹性
+  placeMeal(DINNER,           50, '晚饭', DINNER-90,   DINNER+180); // 晚饭前后有弹性
 
   // ---- 饭后不立刻学习 ----
   fixed.slice().forEach(m=>{
     if(m.type!=='meal') return;
     const rest = m.name==='午饭' ? 25 : 15;
-    if(m.e + rest <= sleepM){
+    if(m.e + rest <= dayEnd){
       fixed.push({id:uid(),type:'rest',fixed:true,
         name: m.name==='午饭' ? '午休 · 走动' : '歇一下',
         s:m.e, e:m.e+rest, place:''});
@@ -550,7 +587,7 @@ function generatePlan(dateStr){
     if(b.s > cur) gaps.push([cur, b.s]);
     cur = Math.max(cur, b.e);
   }
-  if(sleepM > cur) gaps.push([cur, sleepM]);
+  if(dayEnd > cur) gaps.push([cur, dayEnd]);
 
   // ---- 填空档 ----
   const out = [];
@@ -560,7 +597,7 @@ function generatePlan(dateStr){
   const MAX_DEEP = +st.maxDeep || 2;
   const MAX_LIGHT = 2;
   const MAX_TOTAL = (+st.maxStudy || 300) * 60 / 60;   // 分钟
-  const HARD_STOP = sleepM - 60;      // 睡前 1 小时不排学习
+  const HARD_STOP = dayEnd - 60;      // 睡前 1 小时不排学习
   const MIN_BLOCK = 30;
 
   for(const [gs,ge] of gaps){
@@ -641,9 +678,11 @@ let curDate = todayStr();
 
 function renderToday(){
   const dateStr = curDate;
-  const blocks = planOf(dateStr);
   const dw = dowOf(dateStr);
   const isToday = dateStr === todayStr();
+  // 一门课都没录、也没手动加过东西时，不要凭空替你排满一天
+  const weekTotal = Object.values(state.week).reduce((a,x)=>a+(x?x.length:0),0);
+  const blocks = (weekTotal || state.days[dateStr]) ? planOf(dateStr) : [];
 
   // header
   const dt = parseYmd(dateStr);
@@ -654,10 +693,10 @@ function renderToday(){
 
   // banner
   const ban = $('todayBanner');
-  if(state.seeded){
-    ban.innerHTML = '<div class="banner"><span>📋</span><span>现在是<b>示例课表</b>，换成你自己的才能用。</span><button id="bnGo">去录入</button></div>';
+  if(!weekTotal){
+    ban.innerHTML = '<div class="banner"><span>📋</span><span>还没录课表。录一次<b>每周固定课</b>，之后每天自动套用。</span><button id="bnGo">去录入</button></div>';
   } else if(!(state.week[dw]||[]).length && isToday){
-    ban.innerHTML = '<div class="banner"><span>📋</span><span>'+WEEK[dw-1]+'没有课，整天都是空闲。</span><button id="bnGo">录课表</button></div>';
+    ban.innerHTML = '<div class="banner"><span>☀️</span><span>'+WEEK[dw-1]+'没有课，整天都是空闲。</span><button id="bnGo">加一节课</button></div>';
   } else {
     ban.innerHTML = '';
   }
@@ -666,20 +705,22 @@ function renderToday(){
   const doneSet = new Set(state.done[dateStr]||[]);
   const studyBlocks = blocks.filter(b=>b.type==='deep'||b.type==='practice'||b.type==='light');
   const studyMin = studyBlocks.reduce((a,b)=>a+(b.e-b.s),0);
-  const doneMin = studyBlocks.filter(b=>doneSet.has(b.id)).reduce((a,b)=>a+(b.e-b.s),0);
+  const checkables = blocks.filter(b=>b.type!=='class');
+  const doneN = checkables.filter(b=>doneSet.has(b.id)).length;
   const classMin = blocks.filter(b=>b.type==='class').reduce((a,b)=>a+(b.e-b.s),0);
   const freeMin = Math.max(0, (t2m(state.settings.sleep)>t2m(state.settings.wake)
         ? t2m(state.settings.sleep)-t2m(state.settings.wake) : 900) - classMin);
   $('stats').innerHTML =
     '<div class="stat"><div class="v">'+Math.round(studyMin/60*10)/10+'<small>h</small></div><div class="k">计划学习</div></div>'+
-    '<div class="stat"><div class="v">'+(doneMin?Math.round(doneMin/60*10)/10:0)+'<small>h</small></div><div class="k">已完成</div></div>'+
+    '<div class="stat"><div class="v">'+(checkables.length ? doneN+'<small>/'+checkables.length+'</small>' : '0')+'</div><div class="k">已完成</div></div>'+
     '<div class="stat"><div class="v">'+Math.round(freeMin/60*10)/10+'<small>h</small></div><div class="k">空闲</div></div>';
 
   // timeline
   const tl = $('tl');
   tl.innerHTML = '';
   if(!blocks.length){
-    tl.innerHTML = '<div class="empty"><div class="big">◷</div>这一天还没有安排。<br>先到「课表」录入每周固定课程。</div>';
+    tl.innerHTML = '<div class="empty"><div class="big">◷</div>这一天还没有安排。<br>先到「课表」录入每周固定课程。'+
+      '<div style="margin-top:16px"><button class="btn sm" id="empGo">去录课表</button></div></div>';
   }
   const nm = nowMin();
   let nowPlaced = false;
@@ -703,13 +744,13 @@ function renderToday(){
     row.className = 'row';
     const isNow = isToday && nm >= b.s && nm < b.e;
     const isPast = isToday && nm >= b.e;
-    if(isNow) row.classList.add('is-now');
-    else if(isPast) row.classList.add('is-past');
-
     const dur = b.e - b.s;
     const h = clamp(dur*0.62, 52, 150);
     const canCheck = (b.type!=='class');
     const done = doneSet.has(b.id);
+    if(done) row.classList.add('is-done');
+    else if(isNow) row.classList.add('is-now');
+    else if(isPast) row.classList.add('is-past');
 
     row.innerHTML =
       '<div class="tg"><div class="t1">'+m2t(b.s)+'</div><div class="t2">'+m2t(b.e)+'</div></div>'+
@@ -719,8 +760,10 @@ function renderToday(){
           '<div class="mt">'+T.label+(b.place?' · '+esc(b.place):'')+' · '+durText(dur)+'</div>'+
           (isNow?'<div class="tag"><i>进行中</i></div>':'')+
         '</div>'+
-        (canCheck ? '<button class="chk '+(done?'done':'')+'" data-chk="'+b.id+'">'+(done?'✓':'')+'</button>'
-                  : '<div class="chk hide"></div>')+
+        (canCheck
+          ? '<button class="chk'+(done?' done':'')+'" data-chk="'+b.id+'" style="--tc:'+T.color+'" '+
+            'aria-label="'+(done?'取消完成':'标记完成')+'"></button>'
+          : '<div class="chk hide"></div>')+
       '</div>';
     tl.insertBefore(row, null);
   });
@@ -745,6 +788,8 @@ function renderToday(){
   // banner bind
   const bg = $('bnGo');
   if(bg) bg.onclick = ()=>{ goPage('pgWeek'); };
+  const eg = $('empGo');
+  if(eg) eg.onclick = ()=>{ goPage('pgWeek'); };
 
   updateNowBar(blocks, isToday);
 }
@@ -822,6 +867,34 @@ function renderWeek(){
   }
 
   $('cStart').value = $('cStart').value || '08:00';
+  renderPeriods();
+}
+
+/* 节次快选：第一次点定起点，第二次点定终点；点回起点之前则重选 */
+let pSel = { a:-1, b:-1 };
+
+function renderPeriods(){
+  const box = $('cPeriods');
+  if(!box) return;
+  box.innerHTML = '';
+  PERIODS.forEach((p, i)=>{
+    const on = pSel.a >= 0 && i >= pSel.a && i <= pSel.b;
+    const btn = document.createElement('button');
+    btn.className = 'pick' + (on ? ' on' : '');
+    btn.textContent = i + 1;
+    btn.onclick = ()=>{
+      if(pSel.a < 0)          { pSel.a = pSel.b = i; }
+      else if(i > pSel.a)     { pSel.b = i; }
+      else                    { pSel.a = pSel.b = i; }
+      renderPeriods();
+    };
+    box.appendChild(btn);
+  });
+  const hint = $('cPeriodHint');
+  if(!hint) return;
+  hint.textContent = pSel.a < 0
+    ? '点两下选起止'
+    : '第' + (pSel.a+1) + '–' + (pSel.b+1) + '节 · ' + PERIODS[pSel.a][0] + '–' + PERIODS[pSel.b][1];
 }
 
 /* ---------------- editing ---------------- */
@@ -894,7 +967,6 @@ function defaultName(t){
 function openAdd(){
   const blocks = planOf(curDate);
   const nm = Math.round(nowMin()/5)*5;
-  const T = TYPES;
   const sh = $('sheetIn');
   sh.innerHTML =
     '<h3>加一段</h3>'+
@@ -904,13 +976,18 @@ function openAdd(){
     '</div>'+
     '<div class="lbl">名称</div>'+
     '<input type="text" id="edName" value="新内容 · 啃难题">'+
-    '<div class="lbl">时间</div>'+
-    '<div class="frow"><input type="time" id="edStart" value="'+m2t(nm)+'">'+
-      '<span style="color:var(--tx3)">—</span><input type="time" id="edEnd" value="'+m2t(nm+60)+'"></div>'+
+    '<div class="lbl">多久 <span class="phint" id="adRange"></span></div>'+
+    '<div class="picks grid4" id="adDur">'+
+      [15,25,30,45,60,90].map(m=>'<button class="pick" data-m="'+m+'">'+m+'分</button>').join('')+
+      '<button class="pick" data-m="0">自定义</button>'+
+    '</div>'+
+    '<div class="frow" style="margin-top:10px"><input type="time" id="edStart" value="'+m2t(nm)+'"></div>'+
+    '<div class="frow" id="adEndRow" style="display:none"><input type="time" id="edEnd" value="'+m2t(nm+60)+'"></div>'+
     '<div class="frow" style="margin-top:18px">'+
       '<button class="btn sm" id="edSave" style="flex:1">添加</button>'+
     '</div>';
   let chosen='deep';
+  let durMin=45;
   sh.querySelectorAll('#edType button').forEach(btn=>{
     btn.onclick = ()=>{
       chosen = btn.dataset.t;
@@ -918,8 +995,30 @@ function openAdd(){
       $('edName').value = defaultName(chosen);
     };
   });
+  const sync = ()=>{
+    const s = t2m($('edStart').value) || 0;
+    if($('adEndRow').style.display !== 'none'){ $('adRange').textContent=''; return; }
+    $('adRange').textContent = m2t(s)+' – '+m2t(Math.min(s+durMin, 1439));
+  };
+  sh.querySelectorAll('#adDur .pick').forEach(b=>{
+    b.onclick = ()=>{
+      durMin = +b.dataset.m;
+      sh.querySelectorAll('#adDur .pick').forEach(x=>x.classList.toggle('on', x===b));
+      const custom = durMin === 0;
+      $('adEndRow').style.display = custom ? 'flex' : 'none';
+      if(custom) $('edEnd').value = m2t((t2m($('edStart').value)||0) + 45);
+      sync();
+    };
+  });
+  const d45 = sh.querySelector('#adDur .pick[data-m="45"]');
+  if(d45) d45.classList.add('on');
+  $('edStart').oninput = sync;
+  sync();
   $('edSave').onclick = ()=>{
-    const s = t2m($('edStart').value), e = t2m($('edEnd').value);
+    const s = t2m($('edStart').value);
+    const e = ($('adEndRow').style.display !== 'none')
+      ? t2m($('edEnd').value)
+      : Math.min(s + durMin, 1439);
     if(e<=s){ toast('结束时间要晚于开始时间'); return; }
     blocks.push({ id:uid(), type:chosen, name:($('edName').value||'').trim()||defaultName(chosen),
                   place:'', s, e, auto:false });
@@ -1021,6 +1120,20 @@ function icsStamp(dateStr, min){
   const d = parseYmd(dateStr);
   return d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'T'+pad2(Math.floor(min/60)%24)+pad2(min%60)+'00';
 }
+/* 稳定 UID：同一日期、同一起点、同一类型 => 同一个 UID
+   这样重新生成后导入日历是「更新」而不是「新增」，不会重复提醒 */
+function stableUID(dateStr, block){
+  const raw = dateStr + '|' + block.type + '|' + block.s + '|' + (block.name||'');
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for(let i=0;i<raw.length;i++){
+    const c = raw.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 + c, 0x85ebca6b) >>> 0;
+  }
+  const hex = h1.toString(16).padStart(8,'0') + h2.toString(16).padStart(8,'0');
+  return 'dp' + dateStr.replace(/-/g,'') + '-' + hex + '@dayplan';
+}
+
 function fold(line){
   // ICS 75 octet folding（中文按 UTF-8 字节算）
   let out='', cur='';
@@ -1043,7 +1156,7 @@ function buildICS(dateStr){
   blocks.forEach(b=>{
     const T = TYPES[b.type] || TYPES.other;
     L.push('BEGIN:VEVENT');
-    L.push('UID:'+b.id+'@dayplan');
+    L.push('UID:'+stableUID(dateStr, b));
     L.push('DTSTAMP:'+icsStamp(dateStr, b.s));
     L.push('DTSTART:'+icsStamp(dateStr, b.s));
     L.push('DTEND:'+icsStamp(dateStr, b.e));
@@ -1077,7 +1190,7 @@ function buildICSWeek(startStr){
     planOf(ds).forEach(b=>{
       const T = TYPES[b.type] || TYPES.other;
       L.push('BEGIN:VEVENT');
-      L.push('UID:'+b.id+'-'+ds+'@dayplan');
+      L.push('UID:'+stableUID(ds, b));
       L.push('DTSTAMP:'+icsStamp(ds, b.s));
       L.push('DTSTART:'+icsStamp(ds, b.s));
       L.push('DTEND:'+icsStamp(ds, b.e));
@@ -1154,26 +1267,6 @@ function parseBulk(text){
   return {ok: added.length, fail: failed};
 }
 
-/* ---------------- demo data ---------------- */
-function demoLines(){
-  return [
-    '周一 08:00-09:40 高等数学 @教3-201',
-    '周一 10:00-11:40 大学英语 @外语楼305',
-    '周一 14:00-15:40 数据结构 @计算机楼201',
-    '周二 08:00-09:40 线性代数 @教2-105',
-    '周二 14:00-15:40 大学物理 @理科楼402',
-    '周二 16:00-17:40 程序设计实验 @机房A',
-    '周三 10:00-11:40 数据结构 @计算机楼201',
-    '周三 14:00-15:40 马克思主义原理 @人文楼101',
-    '周四 08:00-09:40 高等数学 @教3-201',
-    '周四 10:00-11:40 概率论 @教2-208',
-    '周四 19:00-20:40 选修：心理学导论 @教5-301',
-    '周五 08:00-09:40 大学英语 @外语楼305',
-    '周五 10:00-11:40 大学物理 @理科楼402',
-    '周五 14:00-15:40 程序设计实验 @机房A'
-  ].join('\n');
-}
-
 /* ---------------- page switch ---------------- */
 const PAGE_TITLE = { pgToday:null, pgWeek:['每周课表','周一至周日各录一次，以后每天自动套用'],
                           pgSet:['设置','作息、排法、提醒'] };
@@ -1196,6 +1289,19 @@ function goPage(id){
 function fillSettings(){
   const s = state.settings;
   $('sWake').value = s.wake; $('sSleep').value = s.sleep;
+  const wakeM = t2m(s.wake), slpM = t2m(s.sleep);
+  const ch = $('crossHint');
+  if(ch){
+    if(slpM <= wakeM){
+      const real = slpM + 1440;
+      const hh = Math.floor(real/60), mm = real%60;
+      ch.style.display = 'block';
+      ch.innerHTML = '睡觉时间早于起床，按<b>次日 '+pad(hh)+':'+pad(mm)+'</b> 处理。'+
+        '日程只排到当天 24:00，凌晨那段不进今天的时间轴。';
+    } else {
+      ch.style.display = 'none';
+    }
+  }
   $('sLunch').value = s.lunch; $('sDinner').value = s.dinner;
   $('sDeepLen').value = String(s.deepLen); $('sPracLen').value = String(s.pracLen);
   $('sMaxDeep').value = String(s.maxDeep); $('sBuf').value = String(s.buffer);
@@ -1304,10 +1410,26 @@ function bindStatic(){
   $('mask').onclick = closeSheet;
   $('sheet').addEventListener('click', e=> e.stopPropagation());
 
+  $('cManual').onclick = ()=>{
+    const row = $('cManualRow');
+    const manual = row.style.display === 'none';
+    row.style.display = manual ? 'flex' : 'none';
+    $('cManual').textContent = manual ? '用节次选' : '手动输入时间';
+    $('cPeriodHint').textContent = manual ? '' : (pSel.a < 0 ? '点两下选起止' : $('cPeriodHint').textContent);
+    if(manual){ $('cStart').value = PERIODS[0][0]; $('cEnd').value = PERIODS[1][1]; }
+  };
+
   $('btnAddClass').onclick = ()=>{
-    const s = $('cStart').value, e = $('cEnd').value;
     const nm = ($('cName').value||'').trim();
     if(!nm){ toast('填一下课程名'); return; }
+    let s, e;
+    if($('cManualRow').style.display !== 'none'){
+      s = $('cStart').value; e = $('cEnd').value;
+    } else {
+      if(pSel.a < 0){ toast('点一下节次'); return; }
+      s = PERIODS[pSel.a][0];
+      e = PERIODS[pSel.b][1];
+    }
     if(t2m(e) <= t2m(s)){ toast('结束时间要晚于开始'); return; }
     if(!state.week[curDow]) state.week[curDow]=[];
     state.week[curDow].push({ id:uid(), name:nm, place:($('cPlace').value||'').trim(), start:s, end:e });
@@ -1315,6 +1437,7 @@ function bindStatic(){
     state.days = {}; state.seeded = false;
     save();
     $('cName').value=''; $('cPlace').value='';
+    pSel = { a:-1, b:-1 };
     renderWeek(); renderToday();
     toast('已添加');
   };
@@ -1329,15 +1452,6 @@ function bindStatic(){
     } else {
       toast('一行都没解析出来，检查格式');
     }
-  };
-
-  $('btnDemo').onclick = ()=>{
-    if(Object.values(state.week).some(a=>a.length) && !confirm('会覆盖现有课表，继续？')) return;
-    state.week = {1:[],2:[],3:[],4:[],5:[],6:[],7:[]};
-    state.days = {}; state.seeded = true;
-    parseBulk(demoLines());
-    state.seeded = true; save(); renderAll();
-    toast('已填入示例课表');
   };
 
   bindSettings();
@@ -1367,13 +1481,13 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 }
 
 /* ---------------- boot ---------------- */
-const hadData = load();
-if(!hadData){
-  // 首次进入：给一份示例课表，让界面立刻有内容
+load();
+// 老版本曾自动灌一份示例课表；用户不需要，这里一次性清掉。
+// 用户自己加过课时 seeded 已经是 false，所以真实数据不会被动到。
+if(state.seeded){
   state.week = {1:[],2:[],3:[],4:[],5:[],6:[],7:[]};
   state.days = {};
-  parseBulk(demoLines());
-  state.seeded = true;
+  state.seeded = false;
   save();
 }
 
