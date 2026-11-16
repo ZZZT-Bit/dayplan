@@ -292,7 +292,7 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
     <div class="stats" id="stats"></div>
     <div class="tl" id="tl"></div>
     <div style="display:flex;gap:8px;margin:18px 0 10px">
-      <button class="btn ghost sm" id="btnRegen" style="flex:1">重新生成安排</button>
+      <button class="btn sm" id="btnRegen" style="flex:1">✨ 智能安排</button>
       <button class="btn soft sm" id="btnAdd" style="flex:1">+ 加一段</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:6px">
@@ -386,7 +386,7 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
             <option value="360">6 小时</option><option value="999">不限</option>
           </select></div>
       </div>
-      <div class="hint" style="margin-top:10px">排法：起床先吃早饭 → 上午放最难的新内容 → 午饭后先歇 25 分钟 → 下午放刷题 → 傍晚后只放复习整理 → 睡前 1 小时不排学习。超过上限的空档留空，不硬塞。</div>
+      <div class="hint" style="margin-top:10px"><b>智能安排</b>：课表上的课固定不动，剩下的空档自动填。起床先吃早饭 → 上午放最难的新内容（上午被课占满就顺延到午后第一个大空档）→ 午饭后先歇 25 分钟 → 下午放刷题 → 傍晚后只放复习整理 → 睡前 1 小时不排学习。超过每日上限就留空，不硬塞。</div>
     </div>
 
     <div class="sect">提醒</div>
@@ -599,11 +599,10 @@ function generatePlan(dateStr){
 
   // ---- 填空档 ----
   const out = [];
-  let deepCount = 0, lightCount = 0, studyTotal = 0;
+  let deepCount = 0, studyTotal = 0;
   const BUF = +st.buffer || 0;
   const DEEP = +st.deepLen || 90, PRAC = +st.pracLen || 60, LIGHT = +st.lightLen || 45;
   const MAX_DEEP = +st.maxDeep || 2;
-  const MAX_LIGHT = 2;
   const MAX_TOTAL = (+st.maxStudy || 300) * 60 / 60;   // 分钟
   const HARD_STOP = dayEnd - 60;      // 睡前 1 小时不排学习
   const MIN_BLOCK = 30;
@@ -614,21 +613,27 @@ function generatePlan(dateStr){
       if(pos >= HARD_STOP) break;
       if(studyTotal >= MAX_TOTAL) break;
 
-      let type = pickType(pos);
+      let type = pickType(pos, deepCount);
       if(type==='deep' && deepCount >= MAX_DEEP) type = 'practice';
-      if(type==='light' && lightCount >= MAX_LIGHT) break;
-      if(type==='deep'   && ge-pos < 45) type = 'practice';
-      if(type==='practice' && ge-pos < 40) type = 'light';
+      if(type==='deep'   && (ge-pos-BUF) < 45) type = 'practice';   // 装不下 45 分钟的深度块就让位
+      if(type==='practice' && (ge-pos-BUF) < 30) type = 'light';
 
       const pref = type==='deep' ? DEEP : type==='practice' ? PRAC : LIGHT;
       const avail = ge - pos;
       let dur = Math.min(pref, avail - BUF);
       dur = Math.round(dur/5)*5;
-      if(studyTotal + dur > MAX_TOTAL) dur = Math.round((MAX_TOTAL - studyTotal)/5)*5;
+
+      // 吃掉零头：与其在空档尾巴留 10 分钟碎片，不如把这块拉长
+      const left = (avail - BUF) - dur;
+      if(left > 0 && left <= 30){
+        dur += left;
+        dur = Math.floor(dur/5)*5;
+      }
+
+      if(studyTotal + dur > MAX_TOTAL) dur = Math.floor((MAX_TOTAL - studyTotal)/5)*5;
       if(dur < MIN_BLOCK - 5) break;
 
       if(type==='deep') deepCount++;
-      else if(type==='light') lightCount++;
       studyTotal += dur;
 
       out.push({
@@ -656,9 +661,11 @@ function generatePlan(dateStr){
   return clean;
 }
 
-/* 按时间段决定该放什么：上午最难、下午练习、傍晚后只复习 */
-function pickType(pos){
+/* 按时间段决定该放什么：上午最难、下午练习、傍晚后只复习。
+   上午被课占满时，允许把「新内容」顺延到午后的第一个大空档，不白白浪费。 */
+function pickType(pos, deepCount){
   if(pos < 12*60) return 'deep';
+  if(pos < 17*60 && deepCount === 0) return 'deep';   // 上午被课占满时，顺延到午后第一个够大的空档
   if(pos < 17*60 + 30) return 'practice';
   return 'light';
 }
@@ -771,7 +778,7 @@ function renderToday(){
   if(!blocks.length){
     if(cleared && weekTotal){
       tl.innerHTML = '<div class="empty"><div class="big">◷</div>这天的安排已清空。'+
-        '<div style="margin-top:16px"><button class="btn sm" id="empRegen">重新安排这天</button></div></div>';
+        '<div style="margin-top:16px"><button class="btn sm" id="empRegen">✨ 智能安排</button></div></div>';
     } else {
       tl.innerHTML = '<div class="empty"><div class="big">◷</div>这一天还没有安排。<br>先到「课表」录入每周固定课程。'+
         '<div style="margin-top:16px"><button class="btn sm" id="empGo">去录课表</button></div></div>';
@@ -846,7 +853,7 @@ function renderToday(){
   const eg = $('empGo');
   if(eg) eg.onclick = ()=>{ goPage('pgWeek'); };
   const erg = $('empRegen');
-  if(erg) erg.onclick = ()=>{ regen(curDate); renderToday(); toast('已重新安排'); };
+  if(erg) erg.onclick = ()=>{ regen(curDate); renderToday(); toast('已智能安排'); };
 
   updateNowBar(blocks, isToday);
 }
@@ -1468,8 +1475,17 @@ function bindStatic(){
   $('btnToday').onclick = ()=>{ curDate = todayStr(); renderToday(); toast('回到今天'); };
 
   $('btnRegen').onclick = ()=>{
-    if(!confirm('按当前课表和作息重新排这一天？手动改过的内容会丢。')) return;
-    regen(curDate); renderToday(); toast('已重新排');
+    const ds = curDate;
+    const snap = snapDay(ds);
+    const wasPause = state.pause;
+    regen(ds);
+    renderToday();
+    const bs = state.days[ds] || [];
+    const mins = bs.filter(b=>b.type==='deep'||b.type==='practice'||b.type==='light')
+                   .reduce((a,b)=>a+(b.e-b.s),0);
+    toastUndo('已智能安排 · 学习 '+(Math.round(mins/6)/10)+' 小时', ()=>{
+      state.pause = wasPause; restoreDay(ds, snap);
+    });
   };
   $('btnAdd').onclick = ()=>{ initAudio(); openAdd(); };
   $('btnClearDay').onclick = ()=>{ clearDay(curDate); };
