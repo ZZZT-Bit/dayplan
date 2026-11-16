@@ -267,7 +267,8 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
   transform:translate(-50%,10px);background:rgba(28,28,30,.94);color:#fff;font-size:13px;
   padding:10px 16px;border-radius:12px;z-index:90;opacity:0;pointer-events:none;transition:all .22s;
   white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
-.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast .undo{margin-left:12px;background:none;border:0;padding:0 2px;color:#6ea8ff;font:inherit;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
@@ -297,6 +298,9 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
     <div style="display:flex;gap:8px;margin-bottom:6px">
       <button class="btn soft" id="btnIcs" style="flex:1">📅 导出这天</button>
       <button class="btn soft" id="btnIcsWeek" style="flex:1">📅 导出整周</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:6px" id="clearRow">
+      <button class="btn danger sm block" id="btnClearDay">🗑 清空这天的安排</button>
     </div>
     <div class="hint" id="icsHint">页面开着时应用内会响铃；页面关掉后，只有导进系统日历的提醒还能响。</div>
   </div>
@@ -408,6 +412,7 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
       <div class="frow"><button class="btn ghost sm block" id="btnExport">导出备份（JSON）</button></div>
       <div class="frow" style="margin-top:9px"><button class="btn ghost sm block" id="btnImport">导入备份</button>
         <input type="file" id="fileIn" accept=".json" style="display:none"></div>
+      <div class="frow" style="margin-top:9px"><button class="btn ghost sm block" id="btnClearAllDays">清空所有安排（保留课表）</button></div>
       <div class="frow" style="margin-top:9px"><button class="btn danger sm block" id="btnClear">清空所有数据</button></div>
       <div class="hint">数据只存在这台手机的浏览器里，不上传任何地方。换手机请先用导出备份。</div>
     </div>
@@ -503,6 +508,8 @@ let state = {
   days:{},          // date -> [block]
   done:{},          // date -> [id]
   notified:{},      // date -> [key]
+  cleared:{},       // date -> true 用户手动清空了这天，不要再自动生成
+  pause:false,      // true = 全部清空过，暂停自动生成
   seeded:false
 };
 
@@ -519,6 +526,7 @@ function load(){
       deepLen:90,pracLen:60,lightLen:45,maxDeep:2,buffer:10,lead:10,maxStudy:300}, o.settings||{});
     state.week = Object.assign({1:[],2:[],3:[],4:[],5:[],6:[],7:[]}, o.week||{});
     state.days = o.days||{}; state.done = o.done||{}; state.notified = o.notified||{};
+    state.cleared = o.cleared||{}; state.pause = !!o.pause;
     return true;
   }catch(e){ return false; }
 }
@@ -657,13 +665,14 @@ function pickType(pos){
 
 /* 某天安排：有存档用存档，没有就生成并存档 */
 function planOf(dateStr){
-  if(!state.days[dateStr]){
-    state.days[dateStr] = generatePlan(dateStr);
-    save();
-  }
+  if(state.days[dateStr]) return state.days[dateStr];
+  if(state.pause || state.cleared[dateStr]) return [];   // 用户清空过，别再自动生成
+  state.days[dateStr] = generatePlan(dateStr);
+  save();
   return state.days[dateStr];
 }
 function regen(dateStr){
+  delete state.cleared[dateStr];
   state.days[dateStr] = generatePlan(dateStr);
   const d = state.done[dateStr];
   if(d){ // 清掉已不存在块的完成标记
@@ -673,6 +682,45 @@ function regen(dateStr){
   save();
 }
 
+/* ---------------- 一键清空安排（可撤销） ---------------- */
+function snapDay(ds){
+  return {
+    day: state.days[ds],
+    done: (state.done[ds]||[]).slice(),
+    notified: (state.notified[ds]||[]).slice(),
+    cleared: !!state.cleared[ds]
+  };
+}
+function restoreDay(ds, s){
+  if(s.day) state.days[ds] = s.day; else delete state.days[ds];
+  if(s.done.length) state.done[ds] = s.done; else delete state.done[ds];
+  if(s.notified.length) state.notified[ds] = s.notified; else delete state.notified[ds];
+  if(s.cleared) state.cleared[ds] = true; else delete state.cleared[ds];
+  save(); renderToday(); renderWeek();
+}
+function clearDay(ds){
+  const any = state.days[ds] || state.cleared[ds] || state.pause || (state.done[ds]||[]).length;
+  if(!any){ toast('这天本来就是空的'); return; }
+  const s = snapDay(ds);
+  const wasPause = state.pause;
+  delete state.days[ds]; delete state.done[ds]; delete state.notified[ds];
+  state.cleared[ds] = true; state.pause = false;
+  save(); renderToday();
+  toastUndo('已清空这天的安排', ()=>{ state.pause = wasPause; restoreDay(ds, s); });
+}
+function clearAllDays(){
+  const n = Object.keys(state.days).length;
+  if(!n && !state.pause){ toast('还没有生成过安排'); return; }
+  const s = { days: state.days, done: state.done, notified: state.notified,
+              cleared: state.cleared, pause: state.pause };
+  state.days = {}; state.done = {}; state.notified = {}; state.cleared = {}; state.pause = true;
+  save(); renderAll();
+  toastUndo('已清空所有安排', ()=>{
+    state.days = s.days; state.done = s.done; state.notified = s.notified;
+    state.cleared = s.cleared; state.pause = s.pause;
+    save(); renderAll();
+  });
+}
 /* ---------------- render: today ---------------- */
 let curDate = todayStr();
 
@@ -718,9 +766,16 @@ function renderToday(){
   // timeline
   const tl = $('tl');
   tl.innerHTML = '';
+  const cleared = !!(state.pause || state.cleared[dateStr]);
+  const cr = $('clearRow'); if(cr) cr.style.display = blocks.length ? 'flex' : 'none';
   if(!blocks.length){
-    tl.innerHTML = '<div class="empty"><div class="big">◷</div>这一天还没有安排。<br>先到「课表」录入每周固定课程。'+
-      '<div style="margin-top:16px"><button class="btn sm" id="empGo">去录课表</button></div></div>';
+    if(cleared && weekTotal){
+      tl.innerHTML = '<div class="empty"><div class="big">◷</div>这天的安排已清空。'+
+        '<div style="margin-top:16px"><button class="btn sm" id="empRegen">重新安排这天</button></div></div>';
+    } else {
+      tl.innerHTML = '<div class="empty"><div class="big">◷</div>这一天还没有安排。<br>先到「课表」录入每周固定课程。'+
+        '<div style="margin-top:16px"><button class="btn sm" id="empGo">去录课表</button></div></div>';
+    }
   }
   const nm = nowMin();
   let nowPlaced = false;
@@ -790,6 +845,8 @@ function renderToday(){
   if(bg) bg.onclick = ()=>{ goPage('pgWeek'); };
   const eg = $('empGo');
   if(eg) eg.onclick = ()=>{ goPage('pgWeek'); };
+  const erg = $('empRegen');
+  if(erg) erg.onclick = ()=>{ regen(curDate); renderToday(); toast('已重新安排'); };
 
   updateNowBar(blocks, isToday);
 }
@@ -1261,6 +1318,8 @@ function parseBulk(text){
   });
   // 清掉这些天已生成的今日安排，让它们按新课表重排
   state.days = {};
+  state.cleared = {};
+  state.pause = false;
   state.seeded = false;
   save();
   renderAll();
@@ -1374,6 +1433,18 @@ function toast(msg){
   clearTimeout(toastT);
   toastT = setTimeout(()=> t.classList.remove('on'), 1900);
 }
+/* 带「撤销」的提示，5 秒内可反悔 */
+function toastUndo(msg, onUndo){
+  const t = $('toast');
+  t.innerHTML = '';
+  const sp = document.createElement('span'); sp.textContent = msg;
+  const bt = document.createElement('button'); bt.className = 'undo'; bt.textContent = '撤销';
+  bt.onclick = ()=>{ clearTimeout(toastT); t.classList.remove('on'); onUndo(); };
+  t.appendChild(sp); t.appendChild(bt);
+  t.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=> t.classList.remove('on'), 5200);
+}
 
 /* ---------------- wire up ---------------- */
 function renderAll(){
@@ -1401,6 +1472,8 @@ function bindStatic(){
     regen(curDate); renderToday(); toast('已重新排');
   };
   $('btnAdd').onclick = ()=>{ initAudio(); openAdd(); };
+  $('btnClearDay').onclick = ()=>{ clearDay(curDate); };
+  $('btnClearAllDays').onclick = ()=>{ clearAllDays(); };
   $('btnIcs').onclick = ()=> exportICS();
   $('btnIcsWeek').onclick = ()=>{
     downloadICS(buildICSWeek(curDate), '本周安排.ics');
@@ -1434,7 +1507,7 @@ function bindStatic(){
     if(!state.week[curDow]) state.week[curDow]=[];
     state.week[curDow].push({ id:uid(), name:nm, place:($('cPlace').value||'').trim(), start:s, end:e });
     state.week[curDow].sort((a,b)=> t2m(a.start)-t2m(b.start));
-    state.days = {}; state.seeded = false;
+    state.days = {}; state.cleared = {}; state.pause = false; state.seeded = false;
     save();
     $('cName').value=''; $('cPlace').value='';
     pSel = { a:-1, b:-1 };
