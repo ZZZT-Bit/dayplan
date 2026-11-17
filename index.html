@@ -352,6 +352,10 @@ textarea{resize:vertical;min-height:88px;line-height:1.55;font-size:13px}
 .pick.on{background:var(--tx);border-color:var(--tx);color:#fff;
   box-shadow:0 2px 6px -2px rgba(23,23,26,.3)}
 .phint{font-weight:400;letter-spacing:0;color:var(--tx3)}
+.chipclear{margin-left:7px;padding:2px 8px;border-radius:7px;border:1px solid var(--line);
+  background:#fff;color:var(--tx2);font-size:11px;font-family:inherit;cursor:pointer;
+  font-weight:600;vertical-align:1px}
+.chipclear:active{background:#fdeae4;color:#c85a3c;border-color:#f3d7cf}
 .linkbtn{background:none;border:none;padding:9px 0 0;font-size:12px;color:var(--tx3);
   text-decoration:none;cursor:pointer;align-self:flex-start;
   border-bottom:1px dashed var(--line)}
@@ -392,6 +396,37 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
 /* 操作区 */
 .acts{display:flex;gap:9px;margin:20px 0 12px}
 .acts .btn{flex:1;padding:13px 16px;font-size:14px;border-radius:12px}
+
+/* 5 分钟启动按钮 */
+.kick{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;
+  margin:0 0 8px;padding:13px 16px;border-radius:13px;cursor:pointer;
+  background:linear-gradient(135deg,#f4f8ff 0%,#edf3fc 100%);
+  border:1px solid #dbe6f5;font-family:inherit;
+  transition:transform .12s,box-shadow .15s}
+.kick:active{transform:scale(.985);box-shadow:0 2px 10px -2px rgba(63,108,176,.2)}
+.kick-ic{font-size:10px;color:var(--acc);opacity:.7;line-height:1}
+.kick-t{font-size:14px;font-weight:650;color:#33578c;letter-spacing:-.2px}
+.kick-s{font-size:11px;color:#8699b3}
+
+/* 5 分钟计时遮罩 */
+.kickmask{position:fixed;inset:0;z-index:85;display:none;
+  background:rgba(23,23,26,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  align-items:center;justify-content:center;flex-direction:column;padding:28px;text-align:center}
+.kickmask.on{display:flex;animation:fade .22s}
+.kickmask .k-title{font-size:12px;color:rgba(255,255,255,.5);letter-spacing:2.5px}
+.kickmask .k-task{font-size:15px;color:#fff;margin-top:12px;font-weight:600;
+  max-width:300px;line-height:1.55}
+.kickmask .k-ring{position:relative;width:172px;height:172px;margin:28px 0 6px}
+.kickmask .k-ring svg{transform:rotate(-90deg);display:block}
+.kickmask .k-num{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:54px;font-weight:200;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:-3px}
+.kickmask .k-tip{font-size:11.5px;color:rgba(255,255,255,.38);margin-top:6px;line-height:1.6}
+.kickmask .k-acts{display:flex;gap:12px;margin-top:28px;width:100%;max-width:300px}
+.kickmask .k-acts button{flex:1;border:none;border-radius:12px;padding:13px;
+  font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+.kickmask .k-go{background:rgba(255,255,255,.13);color:#fff}
+.kickmask .k-stop{background:#fff;color:#17171a}
 .acts-sub{display:flex;align-items:center;justify-content:center;gap:2px;margin-bottom:2px}
 .mini{background:none;border:none;padding:7px 10px;font-size:12px;color:var(--tx2);
   cursor:pointer;font-family:inherit;border-radius:8px;transition:background .13s,color .13s}
@@ -454,6 +489,13 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
       <button class="btn" id="btnRegen">✨ 智能安排</button>
       <button class="btn ghost" id="btnAdd">+ 加一段</button>
     </div>
+
+    <!-- 卡住时用的唯一出口：不要求你做完，只要求你开始 -->
+    <button class="kick" id="btnKick">
+      <span class="kick-ic">▶</span>
+      <span class="kick-t">现在只做 5 分钟</span>
+      <span class="kick-s">不想做也行，做完 5 分钟就随你</span>
+    </button>
     <div class="acts-sub">
       <button class="mini" id="btnIcs">导出这天</button>
       <span class="dot-sep">·</span>
@@ -658,6 +700,25 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
   <div class="acts">
     <button class="sn" id="alSnooze">稍后 5 分钟</button>
     <button class="ok" id="alOk">知道了</button>
+  </div>
+</div>
+
+<!-- 5 分钟启动计时 -->
+<div class="kickmask" id="kickmask">
+  <div class="k-title">只做 5 分钟</div>
+  <div class="k-task" id="kTask">—</div>
+  <div class="k-ring">
+    <svg width="172" height="172">
+      <circle cx="86" cy="86" r="76" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6"/>
+      <circle id="kRing" cx="86" cy="86" r="76" fill="none" stroke="#8fb8ef" stroke-width="6"
+              stroke-linecap="round" stroke-dasharray="477" stroke-dashoffset="0"/>
+    </svg>
+    <div class="k-num" id="kNum">5:00</div>
+  </div>
+  <div class="k-tip">时间到了就可以停。但通常你会想继续。</div>
+  <div class="k-acts">
+    <button class="k-go" id="kStop">停一下</button>
+    <button class="k-stop" id="kDone">做完了</button>
   </div>
 </div>
 
@@ -1238,11 +1299,13 @@ function renderSummary(dateStr, blocks, doneSet, isToday, study){
   const nm = nowMin();
   const left = study.filter(b=> b.e > nm && !doneSet.has(b.id)).length;
 
-  let tone, line;
-  if(pct >= 80){ tone='good'; line='今天基本按计划做完了。'; }
-  else if(pct >= 50){ tone='mid'; line='完成了一半多，剩下的事明天还能补。'; }
-  else if(pct > 0){ tone='low'; line='做了 '+Math.round(doneMin)+' 分钟。有开始就不算白过。'; }
-  else { tone='none'; line='今天还没开始。现在挑最小的一段做 15 分钟也行。'; }
+  let tone;
+  if(pct >= 80) tone='good';
+  else if(pct >= 50) tone='mid';
+  else if(pct > 0) tone='low';
+  else tone='none';
+  // 文案由「今天的真实情况」生成，而不是固定几句
+  const line = dailyLine(pct, energyOf(dateStr), left, dowOf(dateStr));
 
   // 近 7 天的累计：让人看到「不是一天的事」
   const st7 = historyStats(7);
@@ -1342,6 +1405,87 @@ function clearAllDays(){
     save(); renderAll();
   });
 }
+/* ---------------- 今日一句 ----------------
+   不是鸡汤，是「根据你今天的实际情况说一句准话」。
+   输入：完成度、精力、剩余段数、星期几。输出：一句话。 */
+function dailyLine(pct, lv, left, dow){
+  const isWeekend = dow >= 6;
+  // 早上还没开始时
+  if(pct === 0 && nowMin() < 10*60){
+    return lv===1 ? '今天状态不好就别硬来，先喝口水，做到第一段就停。'
+                  : '先做第一段。开始的阻力比过程大得多。';
+  }
+  if(pct === 0 && nowMin() >= 21*60){
+    return '今天不做了也不算失败。早点睡，明天那段才算数。';
+  }
+  if(pct === 0){
+    return '还没开始。挑最小的一段，做 5 分钟就够了。';
+  }
+  if(pct >= 100){
+    return lv===1 ? '今天状态不好还做完了，这比平时做完更值得记。'
+                  : '全做完了。剩下的时间是你的，别又找活干。';
+  }
+  if(pct >= 80){
+    return left ? '快收尾了，还剩 '+left+' 段。' : '今天的量基本走完了。';
+  }
+  if(pct >= 50){
+    return isWeekend ? '周末做到这个程度已经够了，剩下随意。'
+                     : '过半了。剩下的按顺序做，不用挑。';
+  }
+  if(lv === 1){
+    return '状态差还做了 '+pct+'%，这已经是今天能拿出来的最好成绩。';
+  }
+  return '做了 '+pct+'%。别盯着差的那部分，先看已经做完的。';
+}
+
+/* ---------------- 5 分钟启动 ----------------
+   设计意图：拖延的阻力在「开始」这一刻，不在过程。
+   所以把承诺降到 5 分钟——小到无法拒绝。到时间就给停的权力。
+   真实数据表明，一旦开始，多数人会继续下去；但不继续也没关系。 */
+let kickTimer = null, kickEnd = 0, kickTotal = 300, kickBlockId = null;
+
+function startKick(label, blockId){
+  $('kTask').textContent = label;
+  $('kickmask').classList.add('on');
+  kickBlockId = blockId;
+  kickTotal = 300;
+  kickEnd = Date.now() + kickTotal*1000;
+  tickKick();
+  clearInterval(kickTimer);
+  kickTimer = setInterval(tickKick, 250);
+}
+function tickKick(){
+  const left = Math.max(0, kickEnd - Date.now());
+  const sec = Math.ceil(left/1000);
+  const m = Math.floor(sec/60), s = sec%60;
+  $('kNum').textContent = m + ':' + String(s).padStart(2,'0');
+  const ring = $('kRing');
+  if(ring){
+    const C = 2*Math.PI*76;
+    ring.setAttribute('stroke-dasharray', C.toFixed(1));
+    ring.setAttribute('stroke-dashoffset', (C*(1 - left/(kickTotal*1000))).toFixed(1));
+  }
+  if(left <= 0){ stopKick(true, true); }
+}
+function stopKick(done, auto){
+  clearInterval(kickTimer); kickTimer = null;
+  $('kickmask').classList.remove('on');
+  if(done && kickBlockId){
+    const ds = todayStr();
+    const arr = state.done[ds] || (state.done[ds]=[]);
+    if(!arr.includes(kickBlockId)){
+      arr.push(kickBlockId);
+      const b = (state.days[ds]||[]).find(x=>x.id===kickBlockId);
+      recordDone(ds, b);
+      save(); renderToday();
+    }
+  }
+  if(auto) toast('5 分钟到。想继续就继续，不想就停。');
+  else if(done) toast('✓ 记下了');
+  else toast('停了也算数。下次再来。');
+  kickBlockId = null;
+}
+
 /* ---------------- 完成历史 ----------------
    勾完之后不该只留在页面上，还要留个记录，让人能回看「我这周做成了什么」。 */
 function recordDone(dateStr, block){
@@ -1688,18 +1832,38 @@ function renderPeriods(){
     btn.textContent = p.n;
     btn.title = p.n + ' ' + p.s + '–' + p.e;
     btn.onclick = ()=>{
-      if(pSel.a < 0)          { pSel.a = pSel.b = i; }
-      else if(i > pSel.a)     { pSel.b = i; }
-      else                    { pSel.a = pSel.b = i; }
+      // 规则，从简单到特殊：
+      //   ① 当前只选了这一节 → 再点它 = 取消
+      //   ② 点在已选范围内 → 把那节作为新的单节起点
+      //   ③ 没选过 → 从这节开始
+      //   ④ 往后点 → 扩展范围
+      //   ⑤ 往前点 → 以这节为新起点
+      const inRange = pSel.a >= 0 && i >= pSel.a && i <= pSel.b;
+      if(inRange && pSel.a === pSel.b){
+        pSel.a = pSel.b = -1;                 // ①
+      } else if(inRange){
+        pSel.a = pSel.b = i;                  // ② 收窄到这一节
+      } else if(pSel.a < 0){
+        pSel.a = pSel.b = i;                  // ③
+      } else if(i > pSel.a){
+        pSel.b = i;                           // ④
+      } else {
+        pSel.a = pSel.b = i;                  // ⑤
+      }
       renderPeriods();
     };
     box.appendChild(btn);
   });
   const hint = $('cPeriodHint');
   if(!hint) return;
-  hint.textContent = pSel.a < 0
-    ? '点两下选起止'
-    : P[pSel.a].n + '–' + P[pSel.b].n + ' · ' + P[pSel.a].s + '–' + P[pSel.b].e;
+  if(pSel.a < 0){
+    hint.innerHTML = '点两下选起止';
+  } else {
+    hint.innerHTML = P[pSel.a].n + '–' + P[pSel.b].n + ' · ' + P[pSel.a].s + '–' + P[pSel.b].e +
+      ' <button class="chipclear" id="pcClear">取消</button>';
+    const cl = $('pcClear');
+    if(cl) cl.onclick = (e)=>{ e.stopPropagation(); pSel.a = pSel.b = -1; renderPeriods(); };
+  }
 }
 
 /* ---------------- editing ---------------- */
@@ -2442,6 +2606,26 @@ function bindStatic(){
   $('sheet').addEventListener('click', e=> e.stopPropagation());
 
   // 底部实时条：点一下直接完成当前这段，不用滚回去找
+  // 5 分钟启动：挑现在该做的那件事，只要求你开始
+  $('btnKick').onclick = ()=> {
+    initAudio();
+    const nm = nowMin();
+    const bs = planOf(todayStr());
+    // 优先：当前进行中的学习块 → 最近的未完成学习块 → 最近未完成待办
+    const study = bs.filter(b=>['deep','practice','light'].includes(b.type));
+    let target = study.find(b=> nm>=b.s && nm<b.e && !(state.done[todayStr()]||[]).includes(b.id))
+              || study.find(b=> b.s > nm && !(state.done[todayStr()]||[]).includes(b.id))
+              || study.filter(b=>!(state.done[todayStr()]||[]).includes(b.id)).pop();
+    let label = target ? target.name : '';
+    if(!label){
+      const td = state.todos.filter(t=>!t.done)[0];
+      label = td ? td.text : '今天想推进的那件事';
+    }
+    startKick(label, target ? target.id : null);
+  };
+  $('kStop').onclick = ()=> stopKick(false);
+  $('kDone').onclick = ()=> stopKick(true);
+
   $('nowbar').addEventListener('click', ()=>{
     const id = $('nowbar').dataset.curid;
     if(!id) return;
@@ -2458,9 +2642,15 @@ function bindStatic(){
     const manual = row.style.display === 'none';
     row.style.display = manual ? 'flex' : 'none';
     $('cManual').textContent = manual ? '用节次选' : '手动输入时间';
-    $('cPeriodHint').textContent = manual ? '' : (pSel.a < 0 ? '点两下选起止' : $('cPeriodHint').textContent);
     const P = periods();
-    if(manual){ $('cStart').value = P[0].s; $('cEnd').value = P[1].e; }
+    if(manual){
+      $('cPeriodHint').textContent = '';        // 手动模式下不显示节次提示
+      $('cStart').value = P[0] ? P[0].s : '08:00';
+      $('cEnd').value = P[1] ? P[1].e : '09:35';
+    } else {
+      pSel.a = pSel.b = -1;                     // 切回节次模式时清空旧选择
+      renderPeriods();
+    }
   };
 
   $('btnAddClass').onclick = ()=>{
