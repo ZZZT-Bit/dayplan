@@ -251,6 +251,8 @@ nav button.on::before{content:"";position:absolute;top:6px;width:4px;height:4px;
   font-variant-numeric:tabular-nums}
 .sum-line{font-size:14px;font-weight:550;margin-top:6px;line-height:1.5;letter-spacing:-.2px}
 .sum-meta{font-size:11.5px;color:var(--tx2);margin-top:5px;line-height:1.5}
+.sum-wk{font-size:11px;color:var(--tx3);margin-top:7px;padding-top:8px;
+  border-top:1px dashed rgba(0,0,0,.07);line-height:1.5;letter-spacing:.1px}
 .sum-good{background:#eef8f2;border-color:#cfe8db}
 .sum-good .sum-pct{color:#2c8a63}
 .sum-mid{background:#fdf8ec;border-color:#f0e2c4}
@@ -809,6 +811,7 @@ let state = {
   notified:{},      // date -> [key]
   cleared:{},       // date -> true 用户手动清空了这天，不要再自动生成
   energy:{},        // date -> 1|2|3 当天精力自评
+  history:{},       // date -> [{id,type,name,min,at}] 完成记录
   pause:false,      // true = 全部清空过，暂停自动生成
   todos:[],         // 待办
   seeded:false
@@ -830,6 +833,7 @@ function load(){
     state.days = o.days||{}; state.done = o.done||{}; state.notified = o.notified||{};
     state.cleared = o.cleared||{}; state.pause = !!o.pause;
     state.energy = o.energy||{};
+    state.history = o.history||{};
     state.todos = Array.isArray(o.todos) ? o.todos : [];
     return true;
   }catch(e){ return false; }
@@ -983,7 +987,7 @@ function generatePlan(dateStr){
       // 和已占用的块重叠就跳过（比如前一节刚下课）
       const hit = fixed.find(o=> o !== c && s < o.e && e > o.s);
       if(hit) return;
-      fixed.push({ id:uid(), type:'commute', fixed:true,
+      fixed.push({ id:autoId(dateStr,'commute',s), type:'commute', fixed:true,
                    name:'去教室 · '+c.name, place:c.place||'', s, e, forClass:c.id });
     });
   }
@@ -998,7 +1002,7 @@ function generatePlan(dateStr){
       if(e > limit) return;              // 超出本饭点时窗：这顿不排
       const hit = fixed.find(o=> s<o.e && e>o.s);
       if(!hit){
-        fixed.push({id:uid(),type:'meal',fixed:true,name,s,e,place:''});
+        fixed.push({id:autoId(dateStr,'meal',s),type:'meal',fixed:true,name,s,e,place:''});
         return;
       }
       s = hit.e;
@@ -1014,7 +1018,7 @@ function generatePlan(dateStr){
     if(m.type!=='meal') return;
     const rest = m.name==='午饭' ? 25 : 15;
     if(m.e + rest <= dayEnd){
-      fixed.push({id:uid(),type:'rest',fixed:true,
+      fixed.push({id:autoId(dateStr,'rest',m.e),type:'rest',fixed:true,
         name: m.name==='午饭' ? '午休 · 走动' : '歇一下',
         s:m.e, e:m.e+rest, place:''});
     }
@@ -1040,6 +1044,7 @@ function generatePlan(dateStr){
   const lv = energyOf(dateStr);
   const out = [];
   const ctx = {
+    dateStr,
     deepCount: 0, studyTotal: 0,
     BUF: +st.buffer || 0,
     DEEP: +st.deepLen || 90,
@@ -1172,12 +1177,17 @@ function planGap(gs, ge, ctx, out){
     if(rest < 45) break;
   }
 }
+/* 自动块的 id 必须是「稳定」的：同一天、同类型、同起点 => 同一个 id。
+   否则每次重新生成都会换 id，之前打的勾全部对不上，看起来像「勾完就没了」。 */
+function autoId(dateStr, type, s){
+  return 'a' + dateStr.replace(/-/g,'') + '-' + type + '-' + s;
+}
 function pushStudy(out, type, s, e, ctx){
   if(e - s < 15) return;
   ctx.studyTotal += (e - s);
   if(type === 'deep') ctx.deepCount++;
   out.push({
-    id:uid(), type,
+    id: autoId(ctx.dateStr, type, s), type,
     name: type==='deep' ? '新内容 · 啃难题'
         : type==='practice' ? '刷题 · 练习'
         : '复习 · 整理笔记',
@@ -1234,6 +1244,13 @@ function renderSummary(dateStr, blocks, doneSet, isToday, study){
   else if(pct > 0){ tone='low'; line='做了 '+Math.round(doneMin)+' 分钟。有开始就不算白过。'; }
   else { tone='none'; line='今天还没开始。现在挑最小的一段做 15 分钟也行。'; }
 
+  // 近 7 天的累计：让人看到「不是一天的事」
+  const st7 = historyStats(7);
+  const wk = st7.n
+    ? '近 7 天：完成 '+st7.n+' 段，共 '+(Math.round(st7.min/6)/10)+' 小时'+
+      (st7.deep ? '，啃了 '+st7.deep+' 段新内容' : '')
+    : '';
+
   box.innerHTML =
     '<div class="sum sum-'+tone+'">'+
       '<div class="sum-top">'+
@@ -1245,6 +1262,7 @@ function renderSummary(dateStr, blocks, doneSet, isToday, study){
         (deepDone ? ' · 啃了 '+deepDone+' 段新内容' : '')+
         (left ? ' · 还剩 '+left+' 段' : '')+
       '</div>'+
+      (wk ? '<div class="sum-wk">'+wk+'</div>' : '')+
     '</div>';
 }
 function tdNoteText(lv){
@@ -1264,12 +1282,24 @@ function planOf(dateStr){
 }
 function regen(dateStr){
   delete state.cleared[dateStr];
+  const old = state.days[dateStr] || [];
+  const oldDone = new Set(state.done[dateStr] || []);
+  // 记录旧块的「指纹」：勾过的块，只要类型和起点没变，新块也自动算完成
+  const donePrints = new Set();
+  old.forEach(b=>{
+    if(oldDone.has(b.id)) donePrints.add(b.type + '@' + b.s);
+  });
+
   state.days[dateStr] = generatePlan(dateStr);
-  const d = state.done[dateStr];
-  if(d){ // 清掉已不存在块的完成标记
-    const ids = new Set(state.days[dateStr].map(b=>b.id));
-    state.done[dateStr] = d.filter(x=>ids.has(x));
-  }
+
+  // 重建完成标记：新 id（稳定 id 已经能对上）+ 指纹兜底（兼容旧数据）
+  const keep = [];
+  state.days[dateStr].forEach(b=>{
+    if(oldDone.has(b.id)) keep.push(b.id);
+    else if(donePrints.has(b.type + '@' + b.s)) keep.push(b.id);
+  });
+  if(keep.length) state.done[dateStr] = keep;
+  else delete state.done[dateStr];
   save();
 }
 
@@ -1312,6 +1342,34 @@ function clearAllDays(){
     save(); renderAll();
   });
 }
+/* ---------------- 完成历史 ----------------
+   勾完之后不该只留在页面上，还要留个记录，让人能回看「我这周做成了什么」。 */
+function recordDone(dateStr, block){
+  if(!block) return;
+  if(!state.history) state.history = {};
+  const arr = state.history[dateStr] || (state.history[dateStr] = []);
+  if(arr.some(x=>x.id===block.id)) return;
+  arr.push({ id:block.id, type:block.type, name:block.name, min:block.e-block.s, at:Date.now() });
+  // 只留最近 60 天，别把 localStorage 撑爆
+  const keys = Object.keys(state.history).sort();
+  while(keys.length > 60){ delete state.history[keys.shift()]; }
+}
+function unrecordDone(dateStr, id){
+  if(!state.history || !state.history[dateStr]) return;
+  state.history[dateStr] = state.history[dateStr].filter(x=>x.id!==id);
+  if(!state.history[dateStr].length) delete state.history[dateStr];
+}
+function historyStats(days){
+  const h = state.history || {};
+  let min = 0, n = 0, deep = 0;
+  for(let i=0;i<days;i++){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = ymd(d);
+    (h[ds]||[]).forEach(x=>{ min += x.min||0; n++; if(x.type==='deep') deep++; });
+  }
+  return { min, n, deep };
+}
+
 /* ---------------- render: today ---------------- */
 let curDate = todayStr();
 
@@ -1473,7 +1531,16 @@ function renderToday(){
       const id = el.dataset.chk;
       const arr = state.done[dateStr] || (state.done[dateStr]=[]);
       const i = arr.indexOf(id);
-      if(i>=0) arr.splice(i,1); else arr.push(id);
+      const block = blocks.find(b=>b.id===id);
+      if(i>=0){ arr.splice(i,1); unrecordDone(dateStr, id); }
+      else {
+        arr.push(id);
+        recordDone(dateStr, block);
+        // 打勾给一点轻反馈：震一下 + 一句话（不打断操作）
+        if(navigator.vibrate) try{ navigator.vibrate(12); }catch(e){}
+        const nLeft = blocks.filter(b=> b.type!=='class' && b.type!=='commute' && !arr.includes(b.id)).length;
+        if(block) toast(nLeft ? '✓ '+block.name+' · 还剩 '+nLeft+' 段' : '✓ 今天都做完了');
+      }
       save(); renderToday();
     });
   });
