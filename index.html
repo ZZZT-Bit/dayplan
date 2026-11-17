@@ -130,15 +130,22 @@ header.scrolled{border-bottom-color:var(--line)}
 /* ---------- sticky now bar ---------- */
 .nowbar{position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
   z-index:35;padding:0 16px;pointer-events:none}
-.nowbar .in{max-width:520px;margin:0 auto;background:rgba(28,28,30,.94);color:#fff;border-radius:14px;
-  padding:10px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.18);
-  pointer-events:auto}
+.nowbar .in{max-width:520px;margin:0 auto;background:rgba(28,28,30,.95);color:#fff;border-radius:16px;
+  padding:12px 16px 13px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 8px 26px rgba(0,0,0,.24);pointer-events:auto;position:relative;overflow:hidden}
+.nowbar .prog{position:absolute;left:0;right:0;top:0;height:3px;background:rgba(255,255,255,.13)}
+.nowbar .prog i{display:block;height:100%;width:0;background:var(--nbc,#6ea8ff);
+  transition:width .5s ease;box-shadow:0 0 8px var(--nbc,#6ea8ff)}
 .nowbar .l{flex:1;min-width:0}
-.nowbar .l1{font-size:11px;opacity:.6;letter-spacing:.3px}
-.nowbar .l2{font-size:13.5px;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nowbar .r{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
-.nowbar .r small{font-size:10px;font-weight:500;opacity:.6;margin-left:2px}
-.nowbar.warn .in{background:#c85a3c}
+.nowbar .l1{font-size:11px;opacity:.62;letter-spacing:.3px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.nowbar .l2{font-size:14.5px;font-weight:650;margin-top:2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+.nowbar .r{flex:none;text-align:right}
+.nowbar .r #nbR{font-size:21px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.6px}
+.nowbar .r #nbR small{font-size:10px;font-weight:500;opacity:.6;margin-left:1px}
+.nowbar .r .l1{margin-top:1px}
+.nowbar.warn .in{background:#b8482f}
 
 /* ---------- bottom nav ---------- */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.94);
@@ -291,6 +298,11 @@ textarea{resize:vertical;min-height:88px;line-height:1.5;font-size:13px}
 .stat .v{font-size:19px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
 .stat .k{font-size:10.5px;color:var(--tx2);margin-top:2px}
 .stat .v small{font-size:11px;font-weight:500;color:var(--tx2);margin-left:1px}
+.stat{position:relative;overflow:hidden}
+.stat .pbar{position:absolute;left:0;right:0;bottom:0;height:3px;background:#f0f0ee}
+.stat .pbar i{display:block;height:100%;background:var(--c-prac);transition:width .35s ease}
+.stat-ok .pbar i{background:#2c8a63}
+.stat-ok .v{color:#2c8a63}
 
 body.subpage .nowbar{display:none !important}
 body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px)}
@@ -511,8 +523,15 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
 </div>
 
 <div class="nowbar" id="nowbar" style="display:none"><div class="in">
-  <div class="l"><div class="l1" id="nbL1">进行中</div><div class="l2" id="nbL2">—</div></div>
-  <div class="r" id="nbR">—</div>
+  <div class="prog"><i id="nbProg"></i></div>
+  <div class="l">
+    <div class="l1" id="nbL1">进行中</div>
+    <div class="l2" id="nbL2">—</div>
+  </div>
+  <div class="r">
+    <span id="nbR">—</span>
+    <div class="l1" id="nbLeft" style="text-align:right"></div>
+  </div>
 </div></div>
 
 <nav><div class="in">
@@ -906,54 +925,27 @@ function generatePlan(dateStr){
   }
   if(dayEnd > cur) gaps.push([cur, dayEnd]);
 
-  // ---- 填空档 ----
+  // ---- 智能填空档 ----
+  // 不再「按钟点一刀切」，而是对每个空档做三件事：
+  //   1) 看它紧跟在什么后面（刚上完 95 分钟的课 = 脑子已经累了）
+  //   2) 看它有多长（放得下什么、放完会不会剩碎片）
+  //   3) 按当天的精力曲线 + 剩余配额挑最合适的类型
   const out = [];
-  let deepCount = 0, studyTotal = 0;
-  const BUF = +st.buffer || 0;
-  const DEEP = +st.deepLen || 90, PRAC = +st.pracLen || 60, LIGHT = +st.lightLen || 45;
-  const MAX_DEEP = +st.maxDeep || 2;
-  const MAX_TOTAL = (+st.maxStudy || 300) * 60 / 60;   // 分钟
-  const HARD_STOP = dayEnd - 60;      // 睡前 1 小时不排学习
-  const MIN_BLOCK = 30;
+  const ctx = {
+    deepCount: 0, studyTotal: 0,
+    BUF: +st.buffer || 0,
+    DEEP: +st.deepLen || 90,
+    PRAC: +st.pracLen || 60,
+    LIGHT: +st.lightLen || 45,
+    MAX_DEEP: +st.maxDeep || 2,
+    MAX_TOTAL: +st.maxStudy || 300,
+    HARD_STOP: dayEnd - 60,          // 睡前 1 小时不排学习
+    MIN_BLOCK: 25,                    // 小于这个数的空档不硬塞
+    fixed: all
+  };
 
   for(const [gs,ge] of gaps){
-    let pos = gs;
-    while(ge - pos >= MIN_BLOCK){
-      if(pos >= HARD_STOP) break;
-      if(studyTotal >= MAX_TOTAL) break;
-
-      let type = pickType(pos, deepCount);
-      if(type==='deep' && deepCount >= MAX_DEEP) type = 'practice';
-      if(type==='deep'   && (ge-pos-BUF) < 45) type = 'practice';   // 装不下 45 分钟的深度块就让位
-      if(type==='practice' && (ge-pos-BUF) < 30) type = 'light';
-
-      const pref = type==='deep' ? DEEP : type==='practice' ? PRAC : LIGHT;
-      const avail = ge - pos;
-      let dur = Math.min(pref, avail - BUF);
-      dur = Math.round(dur/5)*5;
-
-      // 吃掉零头：与其在空档尾巴留 10 分钟碎片，不如把这块拉长
-      const left = (avail - BUF) - dur;
-      if(left > 0 && left <= 30){
-        dur += left;
-        dur = Math.floor(dur/5)*5;
-      }
-
-      if(studyTotal + dur > MAX_TOTAL) dur = Math.floor((MAX_TOTAL - studyTotal)/5)*5;
-      if(dur < MIN_BLOCK - 5) break;
-
-      if(type==='deep') deepCount++;
-      studyTotal += dur;
-
-      out.push({
-        id:uid(), type,
-        name: type==='deep' ? '新内容 · 啃难题'
-            : type==='practice' ? '刷题 · 练习'
-            : '复习 · 整理笔记',
-        place:'', s:pos, e:pos+dur, auto:true
-      });
-      pos += dur + BUF;
-    }
+    planGap(gs, ge, ctx, out);
   }
 
   const blocks = fixed.concat(out).sort((a,b)=>a.s-b.s);
@@ -968,6 +960,100 @@ function generatePlan(dateStr){
     clean.push(b);
   }
   return clean;
+}
+
+/* 精力曲线：不同时段适合做什么，返回优先级数组 */
+function energyBands(pos){
+  const h = pos / 60;
+  if(h < 12)  return ['deep','practice','light'];        // 上午：脑子最清醒
+  if(h < 14)  return ['light','practice'];               // 午后困倦期
+  if(h < 17.5)return ['practice','deep','light'];        // 下午：适合刷题，也还能啃点硬的
+  if(h < 19)  return ['light','practice'];               // 傍晚：收尾
+  if(h < 21)  return ['practice','light'];               // 晚上：只做题和复习
+  return ['light'];                                      // 夜里：只复习
+}
+
+/* 这一段紧跟在什么后面？判断疲劳程度 */
+function fatigueBefore(gs, fixed){
+  let f = 0;
+  fixed.forEach(b=>{
+    if(b.e > gs) return;
+    const gap = gs - b.e;
+    if(gap > 20) return;                 // 已经歇过了
+    if(b.type === 'class') f = Math.max(f, 2);   // 刚下课：最累
+    else if(b.type === 'deep') f = Math.max(f, 1);
+  });
+  return f;
+}
+
+/* 把这段空档填满。原则：
+   - 一段空档最多放 2 块（否则时间轴碎成渣）
+   - 不留小于 25 分钟的尾巴
+   - 深度块至少 45 分钟才有意义 */
+function planGap(gs, ge, ctx, out){
+  let pos = gs;
+  let placed = 0;
+
+  while(ge - pos >= ctx.MIN_BLOCK && placed < 3){
+    if(pos >= ctx.HARD_STOP) break;
+    if(ctx.studyTotal >= ctx.MAX_TOTAL) break;
+
+    const net = (ge - pos) - ctx.BUF;
+    if(net < ctx.MIN_BLOCK) break;
+
+    const fatigue = fatigueBefore(pos, ctx.fixed);
+    let prefs = energyBands(pos).slice();
+
+    // 刚下课 / 刚啃完硬骨头：先降一档
+    if(fatigue >= 2) prefs = prefs.filter(t=>t!=='deep');
+    else if(fatigue === 1 && prefs[0]==='deep') prefs = ['practice','deep','light'];
+    // 深度配额用完
+    if(ctx.deepCount >= ctx.MAX_DEEP) prefs = prefs.filter(t=>t!=='deep');
+
+    // 挑第一个放得下的类型
+    let pick = null;
+    for(const t of prefs){
+      if(t==='deep'     && net >= 45){ pick = t; break; }
+      if(t==='practice' && net >= 25){ pick = t; break; }
+      if(t==='light'    && net >= 20){ pick = t; break; }
+    }
+    if(!pick) break;
+
+    const ideal = pick==='deep' ? ctx.DEEP : pick==='practice' ? ctx.PRAC : ctx.LIGHT;
+    let dur = Math.min(ideal, net);
+    dur = Math.floor(dur/5)*5;
+
+    // 吃掉尾巴：剩不到 25 分钟就并进来，别留碎片
+    const left = net - dur;
+    if(left > 0 && left < ctx.MIN_BLOCK){
+      dur += left;
+      dur = Math.floor(dur/5)*5;
+    }
+    // 总量不够就缩
+    const room = ctx.MAX_TOTAL - ctx.studyTotal;
+    if(dur > room) dur = Math.floor(room/5)*5;
+    if(dur < 20) break;
+
+    pushStudy(out, pick, pos, pos+dur, ctx);
+    pos += dur + ctx.BUF;
+    placed++;
+
+    // 剩下还够 45 分钟就继续，否则收手（避免留碎片）
+    const rest = (ge - pos) - ctx.BUF;
+    if(rest < 45) break;
+  }
+}
+function pushStudy(out, type, s, e, ctx){
+  if(e - s < 15) return;
+  ctx.studyTotal += (e - s);
+  if(type === 'deep') ctx.deepCount++;
+  out.push({
+    id:uid(), type,
+    name: type==='deep' ? '新内容 · 啃难题'
+        : type==='practice' ? '刷题 · 练习'
+        : '复习 · 整理笔记',
+    place:'', s, e, auto:true
+  });
 }
 
 /* 按时间段决定该放什么：上午最难、下午练习、傍晚后只复习。
@@ -1078,7 +1164,11 @@ function renderToday(){
         ? t2m(state.settings.sleep)-t2m(state.settings.wake) : 900) - classMin);
   $('stats').innerHTML =
     '<div class="stat"><div class="v">'+Math.round(studyMin/60*10)/10+'<small>h</small></div><div class="k">计划学习</div></div>'+
-    '<div class="stat"><div class="v">'+(checkables.length ? doneN+'<small>/'+checkables.length+'</small>' : '0')+'</div><div class="k">已完成</div></div>'+
+    '<div class="stat'+(checkables.length && doneN===checkables.length ? ' stat-ok' : '')+'">'+
+      '<div class="v">'+(checkables.length ? doneN+'<small>/'+checkables.length+'</small>' : '0')+'</div>'+
+      '<div class="k">已完成</div>'+
+      (checkables.length ? '<div class="pbar"><i style="width:'+Math.round(doneN/checkables.length*100)+'%"></i></div>' : '')+
+    '</div>'+
     '<div class="stat"><div class="v">'+Math.round(freeMin/60*10)/10+'<small>h</small></div><div class="k">空闲</div></div>';
 
   // timeline
@@ -1182,24 +1272,39 @@ function updateNowBar(blocks, isToday){
   if(!isToday){ nb.style.display='none'; document.body.classList.remove('has-now'); return; }
   const nm = nowMin();
   const cur = blocks.find(b=> nm>=b.s && nm<b.e);
+  const study = blocks.filter(b=>['deep','practice','light'].includes(b.type));
+  const leftN = study.filter(b=> b.e > nm).length;
+
   if(cur){
+    const T = TYPES[cur.type] || TYPES.other;
     nb.style.display='block'; document.body.classList.add('has-now');
     nb.classList.remove('warn');
-    $('nbL1').textContent = TYPES[cur.type].label + ' · 进行中';
+    nb.style.setProperty('--nbc', T.color);
+    const pct = Math.min(100, Math.round((nm - cur.s) / Math.max(1, cur.e - cur.s) * 100));
+    $('nbL1').textContent = T.label + ' · 还剩 ' + Math.ceil(cur.e-nm) + ' 分钟';
     $('nbL2').textContent = cur.name;
     $('nbR').innerHTML = Math.ceil(cur.e-nm)+'<small>分</small>';
+    const bar = $('nbProg');
+    if(bar) bar.style.width = pct + '%';
   } else {
     const nxt = blocks.find(b=> b.s > nm);
     if(nxt){
+      const T = TYPES[nxt.type] || TYPES.other;
       nb.style.display='block'; document.body.classList.add('has-now');
       nb.classList.toggle('warn', nxt.s-nm <= 10);
-      $('nbL1').textContent = nxt.s-nm <= 10 ? '马上开始' : '接下来';
-      $('nbL2').textContent = m2t(nxt.s) + ' ' + nxt.name;
-      $('nbR').innerHTML = Math.ceil(nxt.s-nm)+'<small>分</small>';
+      nb.style.setProperty('--nbc', T.color);
+      const gap = Math.ceil(nxt.s-nm);
+      $('nbL1').textContent = (gap <= 10 ? '马上开始 · ' : '接下来 · ') + m2t(nxt.s);
+      $('nbL2').textContent = nxt.name;
+      $('nbR').innerHTML = gap + '<small>分</small>';
+      const bar = $('nbProg');
+      if(bar) bar.style.width = '0%';
     } else {
       nb.style.display='none'; document.body.classList.remove('has-now');
     }
   }
+  const badge = $('nbLeft');
+  if(badge) badge.textContent = leftN ? '还有 '+leftN+' 段' : '今天都排完了';
 }
 
 /* ---------------- render: week ---------------- */
