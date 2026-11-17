@@ -81,7 +81,7 @@ header.scrolled{border-bottom-color:var(--line)}
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   transition:transform .13s,background .13s,border-color .13s;-webkit-tap-highlight-color:transparent}
 .chk:active{transform:scale(.9)}
-.chk.done{background:var(--tc,var(--prac));border-color:var(--tc,var(--prac));
+.chk.done{background:var(--tc,var(--c-prac));border-color:var(--tc,var(--c-prac));
   box-shadow:0 3px 10px -3px var(--tc,rgba(0,0,0,.25))}
 .chk.done::after{content:"";width:12px;height:7px;
   border-left:3px solid #fff;border-bottom:3px solid #fff;
@@ -185,6 +185,31 @@ nav button.on{color:var(--acc)}
 .li .del{width:30px;height:30px;border-radius:8px;border:none;background:#f4f4f2;color:var(--tx2);
   font-size:15px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
 .li .del:active{background:#fde8e3;color:#c85a3c}
+
+/* 待办 */
+.td-add{display:flex;gap:8px;margin:6px 0 14px}
+.td-add input{flex:1}
+.tdl{background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-bottom:14px}
+.td{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-bottom:1px solid var(--line)}
+.td:last-child{border-bottom:none}
+.td .box{width:24px;height:24px;flex:none;margin-top:1px;border-radius:7px;
+  border:2px solid var(--line);background:#fff;cursor:pointer;position:relative;
+  transition:all .13s;-webkit-tap-highlight-color:transparent}
+.td .box:active{transform:scale(.9)}
+.td .box::after{content:"";position:absolute;left:5px;top:7px;width:9px;height:5px;
+  border-left:2.5px solid var(--tx3);border-bottom:2.5px solid var(--tx3);
+  opacity:.2;transform:rotate(-45deg);border-radius:1px}
+.td.done .box{background:var(--c-prac);border-color:var(--c-prac)}
+.td.done .box::after{border-color:#fff;opacity:1}
+.td .tx{flex:1;min-width:0}
+.td .tt{font-size:14px;font-weight:500;line-height:1.45;word-break:break-word}
+.td .tm{font-size:11.5px;color:var(--tx2);margin-top:3px;font-variant-numeric:tabular-nums}
+.td.done .tt{text-decoration:line-through;color:var(--tx3)}
+.td .x{width:26px;height:26px;flex:none;border:none;background:#f4f4f2;color:var(--tx2);
+  border-radius:7px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.td .x:active{background:#fde8e3;color:#c85a3c}
+.td-empty{padding:26px 16px;text-align:center;color:var(--tx3);font-size:13px;line-height:1.7}
+.td-late{color:#c85a3c;font-weight:600}
 
 /* form */
 .form{background:#fff;border-radius:14px;border:1px solid var(--line);padding:13px;margin-top:10px}
@@ -307,6 +332,22 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
       <button class="btn danger sm block" id="btnClearDay">🗑 清空这天的安排</button>
     </div>
     <div class="hint" id="icsHint">页面开着时应用内会响铃；页面关掉后，只有导进系统日历的提醒还能响。</div>
+  </div>
+
+  <!-- 待办 -->
+  <div class="page" id="pgTodo">
+    <div class="td-add">
+      <input type="text" id="tdInput" placeholder="要做什么？回车即加" autocomplete="off">
+      <button class="btn sm" id="tdAdd">加</button>
+    </div>
+    <div class="picks grid4" id="tdFilter" style="margin-bottom:14px">
+      <button class="pick on" data-f="all">全部</button>
+      <button class="pick" data-f="todo">未完成</button>
+      <button class="pick" data-f="done">已完成</button>
+      <button class="pick" data-f="today">今天</button>
+    </div>
+    <div id="tdList"></div>
+    <div style="height:10px"></div>
   </div>
 
   <!-- 课表 -->
@@ -449,6 +490,7 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
 
 <nav><div class="in">
   <button class="on" data-pg="pgToday"><span class="ic">▤</span>今天</button>
+  <button data-pg="pgTodo"><span class="ic">☑</span>待办</button>
   <button data-pg="pgWeek"><span class="ic">▦</span>课表</button>
   <button data-pg="pgSet"><span class="ic">⚙</span>设置</button>
 </div></nav>
@@ -615,6 +657,7 @@ let state = {
   notified:{},      // date -> [key]
   cleared:{},       // date -> true 用户手动清空了这天，不要再自动生成
   pause:false,      // true = 全部清空过，暂停自动生成
+  todos:[],         // 待办
   seeded:false
 };
 
@@ -633,8 +676,97 @@ function load(){
     state.week = Object.assign({1:[],2:[],3:[],4:[],5:[],6:[],7:[]}, o.week||{});
     state.days = o.days||{}; state.done = o.done||{}; state.notified = o.notified||{};
     state.cleared = o.cleared||{}; state.pause = !!o.pause;
+    state.todos = Array.isArray(o.todos) ? o.todos : [];
     return true;
   }catch(e){ return false; }
+}
+
+/* ---------------- 待办 ----------------
+   { id, text, done, at(创建时间戳), day(创建日 YYYY-MM-DD) } */
+function todoList(){ return state.todos; }
+function addTodo(text){
+  const t = String(text||'').trim();
+  if(!t) return false;
+  state.todos.unshift({ id:uid(), text:t, done:false, at:Date.now(), day:todayStr() });
+  save(); renderTodo();
+  return true;
+}
+function toggleTodo(id){
+  const t = state.todos.find(x=>x.id===id);
+  if(!t) return;
+  t.done = !t.done;
+  t.doneAt = t.done ? Date.now() : null;
+  save(); renderTodo();
+}
+function delTodo(id){
+  const i = state.todos.findIndex(x=>x.id===id);
+  if(i<0) return;
+  const removed = state.todos[i];
+  state.todos.splice(i,1);
+  save(); renderTodo();
+  toastUndo('已删除待办', ()=>{ state.todos.splice(i,0,removed); save(); renderTodo(); });
+}
+let tdFilter = 'all';
+function todoVisible(){
+  const list = state.todos;
+  if(tdFilter==='todo') return list.filter(t=>!t.done);
+  if(tdFilter==='done') return list.filter(t=>t.done);
+  if(tdFilter==='today') return list.filter(t=> (t.day||'') === todayStr());
+  return list;
+}
+function renderTodo(){
+  const el = $('tdList');
+  if(!el) return;
+  const list = todoVisible();
+  const left = state.todos.filter(t=>!t.done).length;
+  const ft = $('tdFilter');
+  if(ft) ft.querySelectorAll('.pick').forEach(b=> b.classList.toggle('on', b.dataset.f===tdFilter));
+
+  if(!list.length){
+    const msg = state.todos.length
+      ? (tdFilter==='done' ? '还没有完成的' : tdFilter==='today' ? '今天还没记东西' : '这组是空的')
+      : '还没有待办。上面输入框写一条，回车就加上。';
+    el.innerHTML = '<div class="tdl"><div class="td-empty">'+msg+'</div></div>';
+    return;
+  }
+  const now = Date.now();
+  const yest = ymd(new Date(now - 86400000));
+  const old = list.filter(t=>!t.done && (t.day||'') < yest);
+  let html = '';
+  if(old.length && (tdFilter==='all' || tdFilter==='todo')){
+    html += '<div class="sect" style="margin-top:0">拖了好几天的 <span class="sp"></span>'+
+      '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:#c85a3c">'+old.length+'</span></div>';
+    html += '<div class="tdl">'+old.map(t=>tdRow(t, now, true)).join('')+'</div>';
+  }
+  const rest = old.length && (tdFilter==='all'||tdFilter==='todo') ? list.filter(t=>!old.includes(t)) : list;
+  if(rest.length){
+    html += '<div class="tdl">'+rest.map(t=>tdRow(t, now, false)).join('')+'</div>';
+  }
+  el.innerHTML = html;
+
+  el.querySelectorAll('[data-tg]').forEach(b=> b.onclick = ()=> toggleTodo(b.dataset.tg));
+  el.querySelectorAll('[data-rm]').forEach(b=> b.onclick = ()=> delTodo(b.dataset.rm));
+
+  if(left) $('hdSub').setAttribute('data-left', left);
+}
+function tdRow(t, now, late){
+  let meta = '';
+  if(t.done){
+    meta = '已完成';
+  } else {
+    const d = t.day || '';
+    if(d === todayStr()) meta = '今天';
+    else if(d === ymd(new Date(now - 86400000))) meta = '<span class="td-late">昨天</span>';
+    else if(d){
+      const p = d.split('-');
+      meta = '<span class="td-late">'+(+p[1])+'/'+(+p[2])+'</span>';
+    }
+  }
+  return '<div class="td'+(t.done?' done':'')+'">'+
+    '<button class="box" data-tg="'+t.id+'" aria-label="'+(t.done?'取消完成':'完成')+'"></button>'+
+    '<div class="tx"><div class="tt">'+esc(t.text)+'</div>'+
+      (meta?'<div class="tm">'+meta+'</div>':'')+'</div>'+
+    '<button class="x" data-rm="'+t.id+'" aria-label="删除">✕</button></div>';
 }
 
 /* ---------------- planner ---------------- */
@@ -1539,7 +1671,8 @@ function importMyTable(){
 }
 
 /* ---------------- page switch ---------------- */
-const PAGE_TITLE = { pgToday:null, pgWeek:['每周课表','录一次，按周次自动切换'],
+const PAGE_TITLE = { pgToday:null, pgTodo:['待办','想到什么记下来，做完打勾'],
+                          pgWeek:['每周课表','录一次，按周次自动切换'],
                           pgSet:['设置','作息、周次、排法'] };
 function goPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on', p.id===id));
@@ -1553,6 +1686,7 @@ function goPage(id){
   $('btnToday').style.visibility = t ? 'hidden' : 'visible';
   if(id==='pgToday'){ renderToday(); }
   if(id==='pgWeek') renderWeek();
+  if(id==='pgTodo') renderTodo();
   if(id==='pgSet') fillSettings();
 }
 
@@ -1712,6 +1846,7 @@ function bindSettings(){
         const o = JSON.parse(r.result);
         if(!o.settings || !o.week) throw 0;
         state = Object.assign(state, o);
+        if(!Array.isArray(state.todos)) state.todos = [];
         save(); renderAll(); toast('已导入');
       }catch(err){ toast('文件格式不对'); }
     };
@@ -1748,8 +1883,26 @@ function toastUndo(msg, onUndo){
 /* ---------------- wire up ---------------- */
 function renderAll(){
   renderToday();
+  renderTodo();
   renderWeek();
   fillSettings();
+}
+
+function bindTodo(){
+  const inp = $('tdInput');
+  const submit = ()=>{
+    const v = inp.value;
+    if(!addTodo(v)){ toast('先写点什么'); inp.focus(); return; }
+    inp.value = '';
+    inp.focus();
+  };
+  $('tdAdd').onclick = submit;
+  inp.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){ e.preventDefault(); submit(); }
+  });
+  $('tdFilter').querySelectorAll('.pick').forEach(b=>{
+    b.onclick = ()=>{ tdFilter = b.dataset.f; renderTodo(); };
+  });
 }
 
 function bindStatic(){
@@ -1845,6 +1998,7 @@ function bindStatic(){
   };
 
   bindSettings();
+  bindTodo();
 
   // 滚动时给 header 加边框
   window.addEventListener('scroll', ()=>{
@@ -1912,6 +2066,8 @@ window.__dp = {
   myTable(){ return importMyTable(); },
   goto(ds){ curDate = ds; renderToday(); },
   periods(){ return periods(); },
+  todos(){ return state.todos; },
+  addTodo(t){ return addTodo(t); },
   pcfg(){ return periodCfg(); }
 };
 })();
