@@ -25,6 +25,7 @@
   --c-rest-bg:#f0f0f2;  --c-rest:#7c7c86;
   --c-exer-bg:#e4f2fa;  --c-exer:#2f82ad;
   --c-other-bg:#f3eefb; --c-other:#7a5aa8;
+  --c-commute-bg:#eef2f4; --c-commute:#5f7d8c;
   --nav-h:64px;
 }
 html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
@@ -101,6 +102,7 @@ header.scrolled{border-bottom-color:var(--line)}
 .b-meal{background:var(--c-meal-bg);color:var(--c-meal)}
 .b-rest{background:var(--c-rest-bg);color:var(--c-rest)}
 .b-exercise{background:var(--c-exer-bg);color:var(--c-exer)}
+.b-commute{background:var(--c-commute-bg);color:var(--c-commute)}
 .b-other{background:var(--c-other-bg);color:var(--c-other)}
 
 .row.is-now .card{box-shadow:0 0 0 2px currentColor, 0 4px 14px rgba(0,0,0,.07)}
@@ -319,6 +321,18 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
   <div class="page on" id="pgToday">
     <div id="todayBanner"></div>
     <div class="stats" id="stats"></div>
+
+    <!-- 待办：首屏常驻，不用切页 -->
+    <div class="sect" style="margin-top:14px">待办 <span class="sp"></span>
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--tx3)" id="tdHomeCount"></span>
+    </div>
+    <div class="td-add" style="margin:4px 0 10px">
+      <input type="text" id="tdInputHome" placeholder="要做什么？回车即加" autocomplete="off">
+      <button class="btn sm" id="tdAddHome">加</button>
+    </div>
+    <div id="tdHome"></div>
+
+    <div class="sect" style="margin-top:18px">今天的时间安排</div>
     <div class="tl" id="tl"></div>
     <div style="display:flex;gap:8px;margin:18px 0 10px">
       <button class="btn sm" id="btnRegen" style="flex:1">✨ 智能安排</button>
@@ -452,6 +466,19 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
       <div class="hint" style="margin-top:10px"><b>智能安排</b>：课表上的课固定不动，剩下的空档自动填。起床先吃早饭 → 上午放最难的新内容（上午被课占满就顺延到午后第一个大空档）→ 午饭后先歇 25 分钟 → 下午放刷题 → 傍晚后只放复习整理 → 睡前 1 小时不排学习。超过每日上限就留空，不硬塞。</div>
     </div>
 
+    <div class="sect">上课路上</div>
+    <div class="form">
+      <div class="li" style="padding:11px 0;border-color:var(--line)">
+        <div class="info"><div class="n1">上课前预留</div>
+          <div class="n2">这段时间会占成「去教室」，不会被排上学习</div></div>
+        <select id="sCommute" style="width:92px;flex:none">
+          <option value="0">不留</option><option value="10">10 分钟</option>
+          <option value="15">15 分钟</option><option value="20">20 分钟</option>
+          <option value="30">30 分钟</option><option value="45">45 分钟</option>
+        </select>
+      </div>
+    </div>
+
     <div class="sect">提醒</div>
     <div class="form">
       <div class="li" style="padding:11px 0;border-color:var(--line)">
@@ -531,6 +558,7 @@ const TYPES = {
   meal:     {label:'吃饭', cls:'b-meal',     color:'var(--c-meal)',     dot:'#b8871f'},
   rest:     {label:'休息', cls:'b-rest',     color:'var(--c-rest)',     dot:'#7c7c86'},
   exercise: {label:'运动', cls:'b-exercise', color:'var(--c-exer)',     dot:'#2f82ad'},
+  commute:  {label:'去教室', cls:'b-commute',  color:'var(--c-commute)',  dot:'#5f7d8c'},
   other:    {label:'其他', cls:'b-other',    color:'var(--c-other)',    dot:'#7a5aa8'}
 };
 const TYPE_ORDER = ['deep','practice','light','exercise','rest','meal','class','other'];
@@ -650,6 +678,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;'
 let state = {
   settings:{ wake:'07:00', sleep:'23:30', lunch:'12:00', dinner:'18:00',
              deepLen:90, pracLen:60, lightLen:45, maxDeep:2, buffer:10, lead:10, maxStudy:300,
+             commute:30,
              termStart:DEFAULT_TERM_START, pcfg:null },
   week:{ 1:[],2:[],3:[],4:[],5:[],6:[],7:[] },
   days:{},          // date -> [block]
@@ -671,7 +700,7 @@ function load(){
     const o = JSON.parse(raw);
     state = Object.assign(state, o);
     state.settings = Object.assign({wake:'07:00',sleep:'23:30',lunch:'12:00',dinner:'18:00',
-      deepLen:90,pracLen:60,lightLen:45,maxDeep:2,buffer:10,lead:10,maxStudy:300,
+      deepLen:90,pracLen:60,lightLen:45,maxDeep:2,buffer:10,lead:10,maxStudy:300,commute:30,
       termStart:DEFAULT_TERM_START, pcfg:null}, o.settings||{});
     state.week = Object.assign({1:[],2:[],3:[],4:[],5:[],6:[],7:[]}, o.week||{});
     state.days = o.days||{}; state.done = o.done||{}; state.notified = o.notified||{};
@@ -714,11 +743,54 @@ function todoVisible(){
   if(tdFilter==='today') return list.filter(t=> (t.day||'') === todayStr());
   return list;
 }
+/* 把一组待办拼成 HTML。overdueFirst=true 时把「拖了好几天」单独分组置顶 */
+function todoHTML(list, overdueFirst){
+  if(!list.length) return '';
+  const now = Date.now();
+  const yest = ymd(new Date(now - 86400000));
+  const old = overdueFirst ? list.filter(t=>!t.done && (t.day||'') < yest) : [];
+  let html = '';
+  if(old.length){
+    html += '<div class="sect" style="margin-top:0">拖了好几天的 <span class="sp"></span>'+
+      '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:#c85a3c">'+old.length+'</span></div>'+
+      '<div class="tdl">'+old.map(t=>tdRow(t, now)).join('')+'</div>';
+  }
+  const rest = old.length ? list.filter(t=>!old.includes(t)) : list;
+  if(rest.length) html += '<div class="tdl">'+rest.map(t=>tdRow(t, now)).join('')+'</div>';
+  return html;
+}
+function bindTodoRows(scope){
+  scope.querySelectorAll('[data-tg]').forEach(b=> b.onclick = ()=> toggleTodo(b.dataset.tg));
+  scope.querySelectorAll('[data-rm]').forEach(b=> b.onclick = ()=> delTodo(b.dataset.rm));
+}
 function renderTodo(){
+  const left = state.todos.filter(t=>!t.done).length;
+
+  // 首屏常驻区块：只显示未完成，最多 5 条，避免把时间轴挤下去
+  const home = $('tdHome');
+  if(home){
+    const und = state.todos.filter(t=>!t.done);
+    const cnt = $('tdHomeCount');
+    if(cnt) cnt.textContent = und.length ? '还剩 '+und.length+' 条' : (state.todos.length ? '都做完了' : '');
+    if(!state.todos.length){
+      home.innerHTML = '<div class="tdl"><div class="td-empty">'+
+        '还没有待办。上面写一条，回车就加上。</div></div>';
+    } else if(!und.length){
+      home.innerHTML = '<div class="tdl"><div class="td-empty">今天的待办都做完了 ✓</div></div>';
+    } else {
+      home.innerHTML = todoHTML(und.slice(0,5), true) +
+        (und.length > 5
+          ? '<div class="hint" style="text-align:center;margin-top:-4px">还有 '+(und.length-5)+
+            ' 条，去「待办」页看全部</div>'
+          : '');
+    }
+    bindTodoRows(home);
+  }
+
+  // 待办页完整版
   const el = $('tdList');
   if(!el) return;
   const list = todoVisible();
-  const left = state.todos.filter(t=>!t.done).length;
   const ft = $('tdFilter');
   if(ft) ft.querySelectorAll('.pick').forEach(b=> b.classList.toggle('on', b.dataset.f===tdFilter));
 
@@ -729,27 +801,10 @@ function renderTodo(){
     el.innerHTML = '<div class="tdl"><div class="td-empty">'+msg+'</div></div>';
     return;
   }
-  const now = Date.now();
-  const yest = ymd(new Date(now - 86400000));
-  const old = list.filter(t=>!t.done && (t.day||'') < yest);
-  let html = '';
-  if(old.length && (tdFilter==='all' || tdFilter==='todo')){
-    html += '<div class="sect" style="margin-top:0">拖了好几天的 <span class="sp"></span>'+
-      '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:#c85a3c">'+old.length+'</span></div>';
-    html += '<div class="tdl">'+old.map(t=>tdRow(t, now, true)).join('')+'</div>';
-  }
-  const rest = old.length && (tdFilter==='all'||tdFilter==='todo') ? list.filter(t=>!old.includes(t)) : list;
-  if(rest.length){
-    html += '<div class="tdl">'+rest.map(t=>tdRow(t, now, false)).join('')+'</div>';
-  }
-  el.innerHTML = html;
-
-  el.querySelectorAll('[data-tg]').forEach(b=> b.onclick = ()=> toggleTodo(b.dataset.tg));
-  el.querySelectorAll('[data-rm]').forEach(b=> b.onclick = ()=> delTodo(b.dataset.rm));
-
-  if(left) $('hdSub').setAttribute('data-left', left);
+  el.innerHTML = todoHTML(list, tdFilter==='all' || tdFilter==='todo');
+  bindTodoRows(el);
 }
-function tdRow(t, now, late){
+function tdRow(t, now){
   let meta = '';
   if(t.done){
     meta = '已完成';
@@ -791,6 +846,22 @@ function generatePlan(dateStr){
   const dayEnd = Math.min(sleepM, 1440);
 
   const fixed = classes.slice();
+
+  // ---- 上课前留出去教室的时间 ----
+  // 每节课前 30 分钟占成「去教室」，这样智能安排不会把这段时间排给学习。
+  const LEAD = Math.max(0, +st.commute || 0);
+  if(LEAD > 0){
+    classes.forEach(c=>{
+      const s = c.s - LEAD;
+      if(s < wake) return;                       // 早于起床，没意义
+      const e = c.s;
+      // 和已占用的块重叠就跳过（比如前一节刚下课）
+      const hit = fixed.find(o=> o !== c && s < o.e && e > o.s);
+      if(hit) return;
+      fixed.push({ id:uid(), type:'commute', fixed:true,
+                   name:'去教室 · '+c.name, place:c.place||'', s, e, forClass:c.id });
+    });
+  }
 
   // ---- 吃饭：撞课就在「合理时段」内找空位，绝不错乱到别的饭点 ----
   // 每顿饭有自己的可接受窗口；窗口内实在挤不下就跳过这顿，而不是顺延到晚上
@@ -1000,7 +1071,7 @@ function renderToday(){
   const doneSet = new Set(state.done[dateStr]||[]);
   const studyBlocks = blocks.filter(b=>b.type==='deep'||b.type==='practice'||b.type==='light');
   const studyMin = studyBlocks.reduce((a,b)=>a+(b.e-b.s),0);
-  const checkables = blocks.filter(b=>b.type!=='class');
+  const checkables = blocks.filter(b=>b.type!=='class' && b.type!=='commute');
   const doneN = checkables.filter(b=>doneSet.has(b.id)).length;
   const classMin = blocks.filter(b=>b.type==='class').reduce((a,b)=>a+(b.e-b.s),0);
   const freeMin = Math.max(0, (t2m(state.settings.sleep)>t2m(state.settings.wake)
@@ -1048,7 +1119,7 @@ function renderToday(){
     const isPast = isToday && nm >= b.e;
     const dur = b.e - b.s;
     const h = clamp(dur*0.62, 52, 150);
-    const canCheck = (b.type!=='class');
+    const canCheck = (b.type!=='class' && b.type!=='commute');
     const done = doneSet.has(b.id);
     if(done) row.classList.add('is-done');
     else if(isNow) row.classList.add('is-now');
@@ -1779,6 +1850,7 @@ function fillSettings(){
   $('sMaxDeep').value = String(s.maxDeep); $('sBuf').value = String(s.buffer);
   $('sMaxStudy').value = String(s.maxStudy || 300);
   $('sLead').value = String(s.lead);
+  $('sCommute').value = String(s.commute == null ? 30 : s.commute);
   $('sTermStart').value = s.termStart || DEFAULT_TERM_START;
   const wNow = weekOfDate(todayStr());
   const th = $('termHint');
@@ -1801,7 +1873,7 @@ function bindSettings(){
       toast('已更新，安排已重排');
     };
   });
-  const num = {sDeepLen:'deepLen', sPracLen:'pracLen', sMaxDeep:'maxDeep', sBuf:'buffer', sLead:'lead', sMaxStudy:'maxStudy'};
+  const num = {sDeepLen:'deepLen', sPracLen:'pracLen', sMaxDeep:'maxDeep', sBuf:'buffer', sLead:'lead', sMaxStudy:'maxStudy', sCommute:'commute'};
   Object.keys(num).forEach(id=>{
     $(id).onchange = ()=>{
       state.settings[num[id]] = +$(id).value;
@@ -1889,17 +1961,21 @@ function renderAll(){
 }
 
 function bindTodo(){
-  const inp = $('tdInput');
-  const submit = ()=>{
-    const v = inp.value;
-    if(!addTodo(v)){ toast('先写点什么'); inp.focus(); return; }
-    inp.value = '';
-    inp.focus();
+  const wire = (inp, btn)=>{
+    if(!inp || !btn) return;
+    const submit = ()=>{
+      const v = inp.value;
+      if(!addTodo(v)){ toast('先写点什么'); inp.focus(); return; }
+      inp.value = '';
+      inp.focus();
+    };
+    btn.onclick = submit;
+    inp.addEventListener('keydown', e=>{
+      if(e.key === 'Enter'){ e.preventDefault(); submit(); }
+    });
   };
-  $('tdAdd').onclick = submit;
-  inp.addEventListener('keydown', e=>{
-    if(e.key === 'Enter'){ e.preventDefault(); submit(); }
-  });
+  wire($('tdInput'), $('tdAdd'));          // 待办页
+  wire($('tdInputHome'), $('tdAddHome'));  // 首屏
   $('tdFilter').querySelectorAll('.pick').forEach(b=>{
     b.onclick = ()=>{ tdFilter = b.dataset.f; renderTodo(); };
   });
