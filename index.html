@@ -15,17 +15,20 @@
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#f6f6f4; --card:#fff; --line:#e8e8e4; --tx:#1c1c1e; --tx2:#8a8a8e; --tx3:#b4b4b8;
-  --acc:#3d6bb3;
-  --c-class-bg:#e9eef8; --c-class:#4a6fa5;
-  --c-deep-bg:#fcece7;  --c-deep:#c85a3c;
-  --c-prac-bg:#e6f4ec;  --c-prac:#2c8a63;
-  --c-light-bg:#eef0f9; --c-light:#5a63a8;
-  --c-meal-bg:#fdf3df;  --c-meal:#b8871f;
-  --c-rest-bg:#f0f0f2;  --c-rest:#7c7c86;
-  --c-exer-bg:#e4f2fa;  --c-exer:#2f82ad;
-  --c-other-bg:#f3eefb; --c-other:#7a5aa8;
-  --c-commute-bg:#eef2f4; --c-commute:#5f7d8c;
+  --bg:#f7f7f5; --card:#fff; --line:#eceae6; --tx:#17171a; --tx2:#7d7d84; --tx3:#adadb5;
+  --acc:#3f6cb0;
+  --shadow-sm:0 1px 2px rgba(20,20,25,.05), 0 1px 1px rgba(20,20,25,.03);
+  --shadow-md:0 2px 8px rgba(20,20,25,.06), 0 1px 2px rgba(20,20,25,.04);
+  /* 类型色：提高饱和度与区分度，背景更淡，靠左侧色条和文字承载信息 */
+  --c-class-bg:#eef2fa; --c-class:#41689e;
+  --c-deep-bg:#fdeee8;  --c-deep:#c25434;
+  --c-prac-bg:#e9f6ee;  --c-prac:#25835c;
+  --c-light-bg:#eef0fb; --c-light:#555ea3;
+  --c-meal-bg:#fdf5e3;  --c-meal:#a87a15;
+  --c-rest-bg:#f2f2f4;  --c-rest:#74747e;
+  --c-exer-bg:#e8f4fb;  --c-exer:#2a7ea6;
+  --c-other-bg:#f5effc; --c-other:#74519e;
+  --c-commute-bg:#eef2f5; --c-commute:#5b7686;
   --nav-h:64px;
 }
 html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
@@ -36,64 +39,76 @@ body.has-now{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 74
 .wrap{max-width:520px;margin:0 auto;padding:0 16px}
 
 /* ---------- top ---------- */
-header{position:sticky;top:0;z-index:30;background:rgba(246,246,244,.92);
-  backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);
+header{position:sticky;top:0;z-index:30;background:rgba(247,247,245,.88);
+  backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);
   border-bottom:1px solid transparent;transition:border-color .2s}
 header.scrolled{border-bottom-color:var(--line)}
-.hd{display:flex;align-items:center;gap:10px;padding:12px 0 10px}
-.hd .day{font-size:25px;font-weight:700;letter-spacing:-.5px;line-height:1.1}
-.hd .sub{font-size:12.5px;color:var(--tx2);margin-top:3px}
+.hd{display:flex;align-items:center;gap:10px;padding:14px 0 11px}
+.hd .day{font-size:27px;font-weight:750;letter-spacing:-.75px;line-height:1.05}
+.hd .sub{font-size:12.5px;color:var(--tx2);margin-top:4px;letter-spacing:.1px}
 .hd .sp{flex:1}
-.iconbtn{width:38px;height:38px;border-radius:12px;border:none;background:#fff;color:var(--tx2);
-  display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;
-  box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.iconbtn:active{transform:scale(.94)}
-.iconbtn.on{background:var(--acc);color:#fff}
+.iconbtn{width:36px;height:36px;border-radius:11px;border:none;background:#fff;color:var(--tx2);
+  display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;
+  box-shadow:var(--shadow-sm);transition:transform .12s,background .15s,color .15s}
+.iconbtn:active{transform:scale(.92)}
+.iconbtn.on{background:var(--acc);color:#fff;box-shadow:0 2px 8px -2px rgba(63,108,176,.5)}
 
-.banner{background:#fff8e8;border:1px solid #f0e0b8;color:#8a6a1e;font-size:12.5px;
-  padding:9px 12px;border-radius:12px;margin:0 0 12px;display:flex;gap:8px;align-items:center}
-.banner b{font-weight:600}
+.banner{background:#fff9ea;border:1px solid #f2e4c2;color:#8a6a1e;font-size:12.5px;
+  padding:10px 13px;border-radius:12px;margin:0 0 12px;display:flex;gap:8px;align-items:center;
+  line-height:1.5}
+.banner b{font-weight:650}
 .banner button{margin-left:auto;background:none;border:none;color:#8a6a1e;font-size:12.5px;
-  text-decoration:underline;padding:2px 0;cursor:pointer;white-space:nowrap}
+  text-decoration:underline;padding:2px 0;cursor:pointer;white-space:nowrap;font-weight:600}
 
 /* ---------- timeline ---------- */
-.tl{padding:6px 0 4px}
-.row{display:flex;gap:10px;position:relative}
-.row .tg{width:50px;flex:none;text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
-.row .tg .t1{font-size:13px;font-weight:600;color:var(--tx);letter-spacing:-.2px}
-.row .tg .t2{font-size:10.5px;color:var(--tx3);margin-top:1px}
-.row .bd{flex:1;min-width:0;display:flex;align-items:stretch;gap:8px}
-.card{flex:1;min-width:0;border-radius:13px;padding:9px 12px;position:relative;overflow:hidden;
+.tl{padding:4px 0 4px}
+.row{display:flex;gap:9px;position:relative}
+.row .tg{width:46px;flex:none;text-align:right;padding-top:9px;font-variant-numeric:tabular-nums}
+.row .tg .t1{font-size:12.5px;font-weight:600;color:var(--tx);letter-spacing:-.2px}
+.row .tg .t2{font-size:10px;color:var(--tx3);margin-top:1px}
+.row .bd{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding-right:1px}
+.card{flex:1;min-width:0;border-radius:12px;padding:10px 13px;position:relative;
   display:flex;flex-direction:column;justify-content:center;
   transition:transform .12s,opacity .2s}
-.card:active{transform:scale(.985)}
-.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:currentColor;opacity:.55}
-.card .nm{font-size:14.5px;font-weight:600;line-height:1.25;letter-spacing:-.2px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card .mt{font-size:11.5px;opacity:.72;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card .tag{position:absolute;right:10px;top:50%;transform:translateY(-50%);
-  font-size:10px;font-weight:600;padding:3px 7px;border-radius:20px;background:currentColor;opacity:.85}
-.card .tag span{color:#fff;mix-blend-mode:normal;opacity:1}
-.card .tag{color:inherit}
-.card .tag i{color:#fff;font-style:normal;opacity:.95;font-size:10px}
+.card:active{transform:scale(.99)}
+/* 左侧细色条：信息载体，不抢视线（在圆角内，不溢出） */
+.card::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;
+  border-radius:0 2px 2px 0;background:currentColor;opacity:.62}
+.card .nm{font-size:14.5px;font-weight:600;line-height:1.3;letter-spacing:-.25px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:2px}
+.card .mt{font-size:11.5px;opacity:.66;margin-top:3px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.card .tag{position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  font-size:10px;font-weight:650;padding:3px 8px;border-radius:20px;
+  background:currentColor;letter-spacing:.2px}
+.card .tag i{color:#fff;font-style:normal;font-size:10px}
 
-.chk{width:44px;flex:none;align-self:center;height:44px;border-radius:14px;
-  border:2.5px solid var(--tc,var(--line));background:#fff;
+/* 勾选：小圆勾，紧贴卡片右侧 */
+.chk{width:24px;flex:none;align-self:center;height:24px;border-radius:50%;
+  padding:0;margin:0 2px 0 0;
+  border:1.6px solid var(--tc,var(--line));background:transparent;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:transform .13s,background .13s,border-color .13s;-webkit-tap-highlight-color:transparent}
-.chk:active{transform:scale(.9)}
-.chk.done{background:var(--tc,var(--c-prac));border-color:var(--tc,var(--c-prac));
-  box-shadow:0 3px 10px -3px var(--tc,rgba(0,0,0,.25))}
-.chk.done::after{content:"";width:12px;height:7px;
-  border-left:3px solid #fff;border-bottom:3px solid #fff;
-  transform:rotate(-45deg) translate(1px,-2px);border-radius:1px}
-/* 未完成时画一个很淡的对勾，提示这里可以点 */
-.chk:not(.done)::after{content:"";width:12px;height:7px;
-  border-left:3px solid var(--tc,var(--line));border-bottom:3px solid var(--tc,var(--line));
-  opacity:.17;transform:rotate(-45deg) translate(1px,-2px);border-radius:1px}
-.chk.hide{visibility:hidden}
-.row.is-done .card{opacity:.45}
-.row.is-done .card .nm{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.3)}
+  transition:transform .13s,background .13s,border-color .13s;
+  -webkit-tap-highlight-color:transparent;position:relative;opacity:.72}
+/* 扩大点击热区，视觉小但好按 */
+.chk::before{content:"";position:absolute;inset:-10px;border-radius:50%}
+.chk:active{transform:scale(.86)}
+.chk.done{background:var(--tc,var(--c-prac));border-color:var(--tc,var(--c-prac));opacity:1}
+.chk.done::after{content:"";width:8px;height:4.5px;
+  border-left:2px solid #fff;border-bottom:2px solid #fff;
+  transform:rotate(-45deg) translate(1px,-1px);border-radius:1px}
+/* 未完成：极淡的对勾提示，几乎不占视觉重量 */
+.chk:not(.done)::after{content:"";width:8px;height:4.5px;
+  border-left:1.6px solid var(--tc,var(--line));border-bottom:1.6px solid var(--tc,var(--line));
+  opacity:.34;transform:rotate(-45deg) translate(1px,-1px);border-radius:1px}
+.chk.hide{visibility:hidden;pointer-events:none}
+/* 已完成：不是整块褪色，而是转成中性灰底 + 划掉，减少大色块的视觉噪音 */
+.row.is-done .card{background:#f5f4f1;opacity:1;box-shadow:none}
+.row.is-done .card::before{opacity:.22}
+.row.is-done .card .nm{color:var(--tx3);text-decoration:line-through;
+  text-decoration-color:rgba(0,0,0,.2);text-decoration-thickness:1px}
+.row.is-done .card .mt{opacity:.5}
+.row.is-done .tg{opacity:.5}
 
 .b-class{background:var(--c-class-bg);color:var(--c-class)}
 .b-deep{background:var(--c-deep-bg);color:var(--c-deep)}
@@ -105,17 +120,18 @@ header.scrolled{border-bottom-color:var(--line)}
 .b-commute{background:var(--c-commute-bg);color:var(--c-commute)}
 .b-other{background:var(--c-other-bg);color:var(--c-other)}
 
-.row.is-now .card{box-shadow:0 0 0 2px currentColor, 0 4px 14px rgba(0,0,0,.07)}
-.row.is-past .card{opacity:.62}
-.row.is-past .card .nm{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.18);
-  text-decoration-thickness:1px}
-.row.is-past .chk{opacity:.5}
-.row.is-past .tg{opacity:.45}
+.row.is-now .card{box-shadow:0 0 0 2px currentColor, 0 3px 12px -2px rgba(20,20,25,.13)}
+.row.is-clash .card{box-shadow:0 0 0 2px #c85a3c inset}
+.row.is-clash .card .nm::before{content:"⚠ ";color:#c85a3c}
+/* 已过去但没打勾：只轻微变淡，不要划掉——没做就是没做，别假装做过 */
+.row.is-past .card{opacity:.72}
+.row.is-past .chk{opacity:.55}
+.row.is-past .tg{opacity:.55}
 
-.gap{display:flex;gap:10px;margin:3px 0}
-.gap .tg{width:50px;flex:none}
-.gap .bd{flex:1;display:flex;align-items:center;color:var(--tx3);font-size:11.5px;
-  border-left:1px dashed var(--line);padding-left:12px;min-height:20px}
+.gap{display:flex;gap:9px;margin:5px 0}
+.gap .tg{width:46px;flex:none}
+.gap .bd{flex:1;display:flex;align-items:center;color:var(--tx3);font-size:11px;
+  border-left:1px dashed #e2e0db;padding-left:13px;min-height:18px;letter-spacing:.1px}
 
 .nowline{display:flex;gap:10px;align-items:center;margin:4px 0;height:14px}
 .nowline .tg{width:50px;flex:none;text-align:right;font-size:10px;font-weight:700;color:#e0503c;
@@ -146,103 +162,162 @@ header.scrolled{border-bottom-color:var(--line)}
 .nowbar .r #nbR small{font-size:10px;font-weight:500;opacity:.6;margin-left:1px}
 .nowbar .r .l1{margin-top:1px}
 .nowbar.warn .in{background:#b8482f}
+.nowbar.clickable .in{cursor:pointer}
+.nowbar.clickable .in:active{transform:scale(.985)}
 
 /* ---------- bottom nav ---------- */
-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.94);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line);
-  padding-bottom:env(safe-area-inset-bottom)}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.93);
+  backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav .in{max-width:520px;margin:0 auto;display:flex;height:var(--nav-h)}
 nav button{flex:1;border:none;background:none;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:3px;color:var(--tx3);font-size:10.5px;
-  cursor:pointer;padding:0;font-weight:500}
-nav button .ic{font-size:19px;line-height:1}
+  align-items:center;justify-content:center;gap:3px;color:var(--tx3);font-size:10px;
+  cursor:pointer;padding:0;font-weight:550;letter-spacing:.15px;
+  transition:color .16s;position:relative}
+nav button .ic{font-size:18px;line-height:1;transition:transform .16s}
+nav button:active .ic{transform:scale(.9)}
 nav button.on{color:var(--acc)}
+nav button.on .ic{transform:translateY(-1px)}
+/* 选中项上方一个小指示点 */
+nav button.on::before{content:"";position:absolute;top:6px;width:4px;height:4px;
+  border-radius:50%;background:var(--acc)}
 
 /* ---------- pages ---------- */
-.page{display:none;animation:fade .18s ease-out}
+.page{display:none;animation:fade .2s ease-out}
 .page.on{display:block}
-@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-.sect{margin:20px 0 8px;font-size:11.5px;font-weight:700;color:var(--tx2);letter-spacing:.6px;
-  text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.sect{margin:22px 0 9px;font-size:12px;font-weight:700;color:var(--tx2);letter-spacing:.2px;
+  display:flex;align-items:center;gap:8px}
 .sect .sp{flex:1}
 
 /* weekday chips */
 .chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;min-width:46px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  font-size:12.5px;font-weight:600;color:var(--tx2);cursor:pointer;padding:0 8px;position:relative}
+.chip{flex:none;min-width:44px;height:42px;border-radius:12px;border:1px solid var(--line);
+  background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;font-size:12.5px;font-weight:600;color:var(--tx2);cursor:pointer;padding:0 8px;
+  position:relative;transition:background .14s,color .14s,border-color .14s;
+  box-shadow:var(--shadow-sm)}
 .chip .n{font-size:9.5px;font-weight:500;color:var(--tx3)}
-.chip.on{background:var(--tx);border-color:var(--tx);color:#fff}
-.chip.on .n{color:rgba(255,255,255,.6)}
-.chip.dot::after{content:"";position:absolute;top:6px;right:7px;width:5px;height:5px;border-radius:50%;background:var(--acc)}
+.chip.on{background:var(--tx);border-color:var(--tx);color:#fff;
+  box-shadow:0 2px 8px -2px rgba(23,23,26,.35)}
+.chip.on .n{color:rgba(255,255,255,.62)}
+.chip.dot::after{content:"";position:absolute;top:6px;right:7px;width:5px;height:5px;
+  border-radius:50%;background:var(--acc)}
 .chip.on.dot::after{background:#fff}
 
 /* list rows */
-.list{background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
-.li{display:flex;align-items:center;gap:11px;padding:11px 13px;border-bottom:1px solid var(--line)}
+.list{background:#fff;border-radius:15px;overflow:hidden;border:1px solid var(--line);
+  box-shadow:var(--shadow-sm)}
+.li{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid #f4f2ee;
+  transition:background .13s}
 .li:last-child{border-bottom:none}
-.li .bar{width:3px;align-self:stretch;border-radius:2px;flex:none;min-height:28px}
+.li .bar{width:3px;align-self:stretch;border-radius:2px;flex:none;min-height:30px}
 .li .info{flex:1;min-width:0}
-.li .n1{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.li .n2{font-size:11.5px;color:var(--tx2);margin-top:2px;font-variant-numeric:tabular-nums}
-.li.off{opacity:.52}
-.wtag{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:6px;background:#eef1f6;
-  color:var(--tx2);font-size:10px;font-weight:600;vertical-align:1px;letter-spacing:0}
-.wtag.off{background:#f6f0e8;color:#a1742c}
-.li .del{width:30px;height:30px;border-radius:8px;border:none;background:#f4f4f2;color:var(--tx2);
-  font-size:15px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
-.li .del:active{background:#fde8e3;color:#c85a3c}
+.li .n1{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;letter-spacing:-.15px}
+.li .n2{font-size:11.5px;color:var(--tx2);margin-top:3px;font-variant-numeric:tabular-nums}
+.li.off{opacity:.55}
+.wtag{display:inline-block;margin-left:7px;padding:1.5px 6px;border-radius:6px;background:#eef1f7;
+  color:#5d738f;font-size:10px;font-weight:600;vertical-align:1.5px;letter-spacing:0}
+.wtag.off{background:#fdf3e2;color:#a1742c}
+/* 删除：默认隐形，避免一列灰按钮抢视线；按住/悬停才显形 */
+.li .del{width:26px;height:26px;border-radius:50%;border:none;background:transparent;
+  color:#cfcdc7;font-size:14px;cursor:pointer;flex:none;display:flex;
+  align-items:center;justify-content:center;transition:background .13s,color .13s}
+.li .del:hover{background:#f5f4f1;color:var(--tx2)}
+.li .del:active{background:#fdeae4;color:#c85a3c}
 
-/* 待办 */
-.td-add{display:flex;gap:8px;margin:6px 0 14px}
-.td-add input{flex:1}
-.tdl{background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-bottom:14px}
-.td{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-bottom:1px solid var(--line)}
+/* 精力自评 */
+.en-bar{display:flex;align-items:center;gap:10px;margin:12px 0 4px;flex-wrap:wrap}
+.en-q{font-size:12.5px;color:var(--tx2);flex:none}
+.en-opts{display:flex;gap:6px;flex:1;min-width:0}
+.en{flex:1;min-width:0;border:1.5px solid var(--line);background:#fff;border-radius:11px;
+  padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  cursor:pointer;transition:all .13s;font-family:inherit}
+.en:active{transform:scale(.96)}
+.en .e{font-size:15px;line-height:1.1}
+.en .t{font-size:10.5px;font-weight:600;color:var(--tx2);white-space:nowrap}
+.en.on{background:var(--en-bg,#eef1f6);border-color:var(--en-c,#4a6fa5)}
+.en.on .t{color:var(--en-c,#4a6fa5)}
+.en-note{font-size:11.5px;color:var(--tx2);margin:0 0 2px;flex:1 0 100%;line-height:1.5}
+.en-note b{color:var(--tx)}
+/* 今日小结 */
+.sum{border-radius:14px;padding:13px 15px;margin:14px 0 4px;border:1px solid var(--line);background:#fff}
+.sum-top{display:flex;align-items:baseline;gap:8px}
+.sum-t{font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--tx2)}
+.sum-pct{margin-left:auto;font-size:19px;font-weight:750;letter-spacing:-.5px;
+  font-variant-numeric:tabular-nums}
+.sum-line{font-size:14px;font-weight:550;margin-top:6px;line-height:1.5;letter-spacing:-.2px}
+.sum-meta{font-size:11.5px;color:var(--tx2);margin-top:5px;line-height:1.5}
+.sum-good{background:#eef8f2;border-color:#cfe8db}
+.sum-good .sum-pct{color:#2c8a63}
+.sum-mid{background:#fdf8ec;border-color:#f0e2c4}
+.sum-mid .sum-pct{color:#b8871f}
+.sum-low{background:#fdf1ee;border-color:#f2d9d1}
+.sum-low .sum-pct{color:#c85a3c}
+.sum-none{background:#f6f6f4}
+
+.td-add{display:flex;gap:8px;margin:6px 0 15px}
+.td-add input{flex:1;background:#fff;border-color:var(--line);box-shadow:var(--shadow-sm);
+  border-radius:12px;padding:12px 14px}
+.td-add .btn{border-radius:12px;padding:0 18px}
+.tdl{background:#fff;border-radius:15px;overflow:hidden;border:1px solid var(--line);
+  margin-bottom:15px;box-shadow:var(--shadow-sm)}
+.td{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border-bottom:1px solid #f4f2ee}
 .td:last-child{border-bottom:none}
-.td .box{width:24px;height:24px;flex:none;margin-top:1px;border-radius:7px;
-  border:2px solid var(--line);background:#fff;cursor:pointer;position:relative;
+.td .box{width:21px;height:21px;flex:none;margin-top:1px;border-radius:6px;
+  border:1.8px solid #d8d6d1;background:#fff;cursor:pointer;position:relative;
   transition:all .13s;-webkit-tap-highlight-color:transparent}
-.td .box:active{transform:scale(.9)}
-.td .box::after{content:"";position:absolute;left:5px;top:7px;width:9px;height:5px;
-  border-left:2.5px solid var(--tx3);border-bottom:2.5px solid var(--tx3);
-  opacity:.2;transform:rotate(-45deg);border-radius:1px}
+.td .box::before{content:"";position:absolute;inset:-11px}
+.td .box:active{transform:scale(.88)}
+.td .box::after{content:"";position:absolute;left:4px;top:6px;width:8px;height:4.5px;
+  border-left:2px solid var(--tx3);border-bottom:2px solid var(--tx3);
+  opacity:.22;transform:rotate(-45deg);border-radius:1px}
 .td.done .box{background:var(--c-prac);border-color:var(--c-prac)}
 .td.done .box::after{border-color:#fff;opacity:1}
 .td .tx{flex:1;min-width:0}
-.td .tt{font-size:14px;font-weight:500;line-height:1.45;word-break:break-word}
-.td .tm{font-size:11.5px;color:var(--tx2);margin-top:3px;font-variant-numeric:tabular-nums}
-.td.done .tt{text-decoration:line-through;color:var(--tx3)}
-.td .x{width:26px;height:26px;flex:none;border:none;background:#f4f4f2;color:var(--tx2);
-  border-radius:7px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.td .x:active{background:#fde8e3;color:#c85a3c}
-.td-empty{padding:26px 16px;text-align:center;color:var(--tx3);font-size:13px;line-height:1.7}
+.td .tt{font-size:14px;font-weight:520;line-height:1.5;word-break:break-word;letter-spacing:-.1px}
+.td .tm{font-size:11px;color:var(--tx3);margin-top:3px;font-variant-numeric:tabular-nums;
+  letter-spacing:.1px}
+.td.done .tt{text-decoration:line-through;color:var(--tx3);text-decoration-color:rgba(0,0,0,.22)}
+.td .x{width:24px;height:24px;flex:none;border:none;background:#f5f5f3;color:var(--tx3);
+  border-radius:7px;font-size:12px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:background .13s,color .13s;margin-top:1px}
+.td .x:active{background:#fdeae4;color:#c85a3c}
+.td-empty{padding:28px 18px;text-align:center;color:var(--tx3);font-size:12.5px;line-height:1.7}
 .td-late{color:#c85a3c;font-weight:600}
 
 /* form */
-.form{background:#fff;border-radius:14px;border:1px solid var(--line);padding:13px;margin-top:10px}
+.form{background:#fff;border-radius:15px;border:1px solid var(--line);padding:14px;
+  margin-top:11px;box-shadow:var(--shadow-sm)}
 .frow{display:flex;gap:9px;align-items:center}
 .frow+.frow{margin-top:9px}
 input,select,textarea{font-family:inherit;font-size:14px;color:var(--tx);
-  border:1px solid var(--line);background:#fafaf8;border-radius:10px;padding:10px 11px;
-  outline:none;width:100%;-webkit-appearance:none;appearance:none}
+  border:1px solid var(--line);background:#fbfbf9;border-radius:11px;padding:11px 12px;
+  outline:none;width:100%;-webkit-appearance:none;appearance:none;
+  transition:border-color .15s,background .15s,box-shadow .15s}
 input[type=time]{font-variant-numeric:tabular-nums;min-width:0}
-input:focus,select:focus,textarea:focus{border-color:var(--acc);background:#fff}
-select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%238a8a8e'/></svg>");
-  background-repeat:no-repeat;background-position:right 11px center;padding-right:28px}
-textarea{resize:vertical;min-height:88px;line-height:1.5;font-size:13px}
-.btn{border:none;border-radius:11px;padding:11px 16px;font-size:14px;font-weight:600;
-  background:var(--tx);color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap}
-.btn:active{opacity:.8}
+input::placeholder{color:var(--tx3)}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);background:#fff;
+  box-shadow:0 0 0 3px rgba(63,108,176,.09)}
+select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%237d7d84'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
+textarea{resize:vertical;min-height:88px;line-height:1.55;font-size:13px}
+.btn{border:none;border-radius:11px;padding:11px 16px;font-size:13.5px;font-weight:600;
+  background:var(--tx);color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;
+  letter-spacing:-.1px;transition:opacity .13s,transform .1s}
+.btn:active{opacity:.82;transform:scale(.985)}
 .btn.block{display:block;width:100%}
-.btn.ghost{background:#fff;color:var(--tx);border:1px solid var(--line)}
-.btn.soft{background:#eef1f7;color:var(--acc)}
-.btn.sm{padding:8px 13px;font-size:13px;border-radius:10px}
-.btn.danger{background:#fdece7;color:#c85a3c}
+.btn.ghost{background:#fff;color:var(--tx);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.btn.soft{background:#eef2f8;color:var(--acc)}
+.btn.sm{padding:9px 14px;font-size:12.5px;border-radius:10px}
+.btn.danger{background:#fdeee9;color:#c25434}
 
-.hint{font-size:11.5px;color:var(--tx2);line-height:1.6;margin-top:8px}
-.hint code{background:#eee;padding:1px 5px;border-radius:4px;font-size:11px}
+.hint{font-size:11.5px;color:var(--tx2);line-height:1.65;margin-top:9px}
+.hint code{background:#f1efe9;padding:1px 5px;border-radius:4px;font-size:11px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
 /* sheet */
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:60;opacity:0;pointer-events:none;
@@ -266,14 +341,18 @@ textarea{resize:vertical;min-height:88px;line-height:1.5;font-size:13px}
 .picks{display:flex;gap:6px;flex-wrap:wrap}
 .picks.grid5{display:grid;grid-template-columns:repeat(5,1fr)}
 .picks.grid4{display:grid;grid-template-columns:repeat(4,1fr)}
-.pick{min-width:36px;height:36px;padding:0 9px;border-radius:10px;border:1.5px solid var(--line);
-  background:#fff;font-size:13px;font-weight:600;color:var(--tx2);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s}
-.pick:active{transform:scale(.94)}
-.pick.on{background:var(--tx);border-color:var(--tx);color:#fff}
-.phint{font-weight:400;letter-spacing:0;color:var(--tx3);text-transform:none}
-.linkbtn{background:none;border:none;padding:8px 0 0;font-size:12px;color:var(--tx3);
-  text-decoration:underline;cursor:pointer;align-self:flex-start}
+.pick{min-width:34px;height:34px;padding:0 8px;border-radius:9px;border:1px solid var(--line);
+  background:#fbfbf9;font-size:12px;font-weight:600;color:var(--tx2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background .12s,color .12s,border-color .12s,transform .1s;
+  font-family:inherit;white-space:nowrap}
+.pick:active{transform:scale(.93)}
+.pick.on{background:var(--tx);border-color:var(--tx);color:#fff;
+  box-shadow:0 2px 6px -2px rgba(23,23,26,.3)}
+.phint{font-weight:400;letter-spacing:0;color:var(--tx3)}
+.linkbtn{background:none;border:none;padding:9px 0 0;font-size:12px;color:var(--tx3);
+  text-decoration:none;cursor:pointer;align-self:flex-start;
+  border-bottom:1px dashed var(--line)}
 
 /* alarm overlay */
 .alarm{position:fixed;inset:0;z-index:80;background:rgba(20,20,22,.95);color:#fff;
@@ -293,19 +372,31 @@ textarea{resize:vertical;min-height:88px;line-height:1.5;font-size:13px}
 .alarm .sn{background:rgba(255,255,255,.14);color:#fff}
 
 /* stats strip */
-.stats{display:flex;gap:8px;margin:10px 0 4px}
-.stat{flex:1;background:#fff;border:1px solid var(--line);border-radius:13px;padding:10px 11px}
-.stat .v{font-size:19px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
-.stat .k{font-size:10.5px;color:var(--tx2);margin-top:2px}
-.stat .v small{font-size:11px;font-weight:500;color:var(--tx2);margin-left:1px}
-.stat{position:relative;overflow:hidden}
-.stat .pbar{position:absolute;left:0;right:0;bottom:0;height:3px;background:#f0f0ee}
+.stats{display:flex;gap:8px;margin:14px 0 2px}
+.stat{flex:1;background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:12px 13px 13px;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)}
+.stat .v{font-size:21px;font-weight:750;letter-spacing:-.7px;font-variant-numeric:tabular-nums;
+  line-height:1.1}
+.stat .k{font-size:10.5px;color:var(--tx2);margin-top:4px;letter-spacing:.15px}
+.stat .v small{font-size:11.5px;font-weight:550;color:var(--tx2);margin-left:1px}
+.stat .pbar{position:absolute;left:0;right:0;bottom:0;height:3px;background:#f1f1ef}
 .stat .pbar i{display:block;height:100%;background:var(--c-prac);transition:width .35s ease}
 .stat-ok .pbar i{background:#2c8a63}
 .stat-ok .v{color:#2c8a63}
 
 body.subpage .nowbar{display:none !important}
 body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px)}
+
+/* 操作区 */
+.acts{display:flex;gap:9px;margin:20px 0 12px}
+.acts .btn{flex:1;padding:13px 16px;font-size:14px;border-radius:12px}
+.acts-sub{display:flex;align-items:center;justify-content:center;gap:2px;margin-bottom:2px}
+.mini{background:none;border:none;padding:7px 10px;font-size:12px;color:var(--tx2);
+  cursor:pointer;font-family:inherit;border-radius:8px;transition:background .13s,color .13s}
+.mini:active{background:#f0efec}
+.mini-danger{color:#b5533a}
+.dot-sep{color:#ddd9d3;font-size:11px}
+
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 70px);
   transform:translate(-50%,10px);background:rgba(28,28,30,.94);color:#fff;font-size:13px;
   padding:10px 16px;border-radius:12px;z-index:90;opacity:0;pointer-events:none;transition:all .22s;
@@ -334,6 +425,12 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
     <div id="todayBanner"></div>
     <div class="stats" id="stats"></div>
 
+    <!-- 精力自评：一排三个，点一下就改变今天的排法 -->
+    <div class="en-bar" id="enBar">
+      <div class="en-q">今天感觉怎么样？</div>
+      <div class="en-opts" id="enOpts"></div>
+    </div>
+
     <!-- 待办：首屏常驻，不用切页 -->
     <div class="sect" style="margin-top:14px">待办 <span class="sp"></span>
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--tx3)" id="tdHomeCount"></span>
@@ -344,20 +441,27 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
     </div>
     <div id="tdHome"></div>
 
-    <div class="sect" style="margin-top:18px">今天的时间安排</div>
+    <!-- 今日小结：只在傍晚之后、且今天有安排时出现 -->
+    <div id="summaryBox"></div>
+
+    <div class="sect" style="margin-top:20px">今天的时间安排</div>
     <div class="tl" id="tl"></div>
-    <div style="display:flex;gap:8px;margin:18px 0 10px">
-      <button class="btn sm" id="btnRegen" style="flex:1">✨ 智能安排</button>
-      <button class="btn soft sm" id="btnAdd" style="flex:1">+ 加一段</button>
+
+    <!-- 操作区：主要动作一行，次要动作收成细线按钮 -->
+    <div class="acts">
+      <button class="btn" id="btnRegen">✨ 智能安排</button>
+      <button class="btn ghost" id="btnAdd">+ 加一段</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:6px">
-      <button class="btn soft" id="btnIcs" style="flex:1">📅 导出这天</button>
-      <button class="btn soft" id="btnIcsWeek" style="flex:1">📅 导出整周</button>
+    <div class="acts-sub">
+      <button class="mini" id="btnIcs">导出这天</button>
+      <span class="dot-sep">·</span>
+      <button class="mini" id="btnIcsWeek">导出整周</button>
+      <span class="dot-sep">·</span>
+      <button class="mini mini-danger" id="btnClearDay">清空这天</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:6px" id="clearRow">
-      <button class="btn danger sm block" id="btnClearDay">🗑 清空这天的安排</button>
+    <div class="hint" id="icsHint" style="text-align:center;margin-top:10px">
+      页面开着时应用内会响铃；页面关掉后，只有导进系统日历的提醒还能响。
     </div>
-    <div class="hint" id="icsHint">页面开着时应用内会响铃；页面关掉后，只有导进系统日历的提醒还能响。</div>
   </div>
 
   <!-- 待办 -->
@@ -704,6 +808,7 @@ let state = {
   done:{},          // date -> [id]
   notified:{},      // date -> [key]
   cleared:{},       // date -> true 用户手动清空了这天，不要再自动生成
+  energy:{},        // date -> 1|2|3 当天精力自评
   pause:false,      // true = 全部清空过，暂停自动生成
   todos:[],         // 待办
   seeded:false
@@ -724,6 +829,7 @@ function load(){
     state.week = Object.assign({1:[],2:[],3:[],4:[],5:[],6:[],7:[]}, o.week||{});
     state.days = o.days||{}; state.done = o.done||{}; state.notified = o.notified||{};
     state.cleared = o.cleared||{}; state.pause = !!o.pause;
+    state.energy = o.energy||{};
     state.todos = Array.isArray(o.todos) ? o.todos : [];
     return true;
   }catch(e){ return false; }
@@ -929,7 +1035,9 @@ function generatePlan(dateStr){
   // 不再「按钟点一刀切」，而是对每个空档做三件事：
   //   1) 看它紧跟在什么后面（刚上完 95 分钟的课 = 脑子已经累了）
   //   2) 看它有多长（放得下什么、放完会不会剩碎片）
-  //   3) 按当天的精力曲线 + 剩余配额挑最合适的类型
+  //   3) 按当天的精力曲线 + 自我感觉 + 剩余配额挑最合适的类型
+  const en = energyInfo(dateStr);
+  const lv = energyOf(dateStr);
   const out = [];
   const ctx = {
     deepCount: 0, studyTotal: 0,
@@ -937,8 +1045,11 @@ function generatePlan(dateStr){
     DEEP: +st.deepLen || 90,
     PRAC: +st.pracLen || 60,
     LIGHT: +st.lightLen || 45,
-    MAX_DEEP: +st.maxDeep || 2,
-    MAX_TOTAL: +st.maxStudy || 300,
+    // 精力档位直接改配额：快力竭时深度清零、总上限砍 2.5 小时
+    MAX_DEEP: Math.max(0, (+st.maxDeep || 2) + en.maxDeepBoost),
+    MAX_TOTAL: Math.max(45, (+st.maxStudy || 300) + en.maxTotalBoost),
+    BLOCK_CAP: en.blockCap,           // 单块最长多少分钟
+    NO_DEEP: lv <= 1,                 // 快力竭：一律不排新内容
     HARD_STOP: dayEnd - 60,          // 睡前 1 小时不排学习
     MIN_BLOCK: 25,                    // 小于这个数的空档不硬塞
     fixed: all
@@ -949,13 +1060,27 @@ function generatePlan(dateStr){
   }
 
   const blocks = fixed.concat(out).sort((a,b)=>a.s-b.s);
-  // 防重叠：后一块被前一块压住就顺延
+  // 防重叠：后一块被前一块压住就顺延。
+  // 但「课」不能顺延——课的时间是硬的，顺延它等于改课表。
+  // 同时段两门课（冲突）时，第二门原地保留，并在名字上标出冲突。
   const clean = [];
   for(const b of blocks){
     const last = clean[clean.length-1];
     if(last && b.s < last.e){
-      b.s = last.e;
-      if(b.e - b.s < 10) continue;
+      if(b.type === 'class'){
+        // 与已有的课冲突：保留但标记，不吞掉
+        const clash = clean.filter(x => x.type==='class' && b.s < x.e && b.e > x.s);
+        if(clash.length){
+          b.clash = true;
+          b.name = b.name + '（与「' + clash[0].name + '」冲突）';
+        } else {
+          b.s = last.e;
+          if(b.e - b.s < 10) continue;
+        }
+      } else {
+        b.s = last.e;
+        if(b.e - b.s < 10) continue;
+      }
     }
     clean.push(b);
   }
@@ -1004,8 +1129,10 @@ function planGap(gs, ge, ctx, out){
     const fatigue = fatigueBefore(pos, ctx.fixed);
     let prefs = energyBands(pos).slice();
 
+    // 快力竭：只做复习，不碰新内容也不硬刷题
+    if(ctx.NO_DEEP) prefs = ['light'];
     // 刚下课 / 刚啃完硬骨头：先降一档
-    if(fatigue >= 2) prefs = prefs.filter(t=>t!=='deep');
+    else if(fatigue >= 2) prefs = prefs.filter(t=>t!=='deep');
     else if(fatigue === 1 && prefs[0]==='deep') prefs = ['practice','deep','light'];
     // 深度配额用完
     if(ctx.deepCount >= ctx.MAX_DEEP) prefs = prefs.filter(t=>t!=='deep');
@@ -1020,7 +1147,7 @@ function planGap(gs, ge, ctx, out){
     if(!pick) break;
 
     const ideal = pick==='deep' ? ctx.DEEP : pick==='practice' ? ctx.PRAC : ctx.LIGHT;
-    let dur = Math.min(ideal, net);
+    let dur = Math.min(ideal, net, ctx.BLOCK_CAP);
     dur = Math.floor(dur/5)*5;
 
     // 吃掉尾巴：剩不到 25 分钟就并进来，别留碎片
@@ -1032,7 +1159,9 @@ function planGap(gs, ge, ctx, out){
     // 总量不够就缩
     const room = ctx.MAX_TOTAL - ctx.studyTotal;
     if(dur > room) dur = Math.floor(room/5)*5;
-    if(dur < 20) break;
+    // 因为余额不足被砍到 30 分钟以下的，宁可不排——
+    // 20 分钟的「刷题」既进不了状态，还会把时间轴切碎
+    if(dur < 30) break;
 
     pushStudy(out, pick, pos, pos+dur, ctx);
     pos += dur + ctx.BUF;
@@ -1056,13 +1185,73 @@ function pushStudy(out, type, s, e, ctx){
   });
 }
 
-/* 按时间段决定该放什么：上午最难、下午练习、傍晚后只复习。
-   上午被课占满时，允许把「新内容」顺延到午后的第一个大空档，不白白浪费。 */
-function pickType(pos, deepCount){
-  if(pos < 12*60) return 'deep';
-  if(pos < 17*60 && deepCount === 0) return 'deep';   // 上午被课占满时，顺延到午后第一个够大的空档
-  if(pos < 17*60 + 30) return 'practice';
-  return 'light';
+/* ---------------- 精力 / 力竭 ----------------
+   每天自评一次。不是道德评价，是给排程一个真实输入。
+   level: 3=充沛 2=一般 1=快力竭
+   不同档位会改变：能排几段深度、总时长上限、多长要休息。 */
+const ENERGY = {
+  3: { key:'high', label:'充沛',  icon:'⚡', desc:'今天可以啃硬骨头',
+       maxDeepBoost:+1, maxTotalBoost:+30, blockCap:150 },
+  2: { key:'mid',  label:'一般',  icon:'🙂', desc:'按平常的节奏来',
+       maxDeepBoost:0,  maxTotalBoost:0,  blockCap:110 },
+  1: { key:'low',  label:'快力竭', icon:'🪫', desc:'今天只做轻的，不硬撑',
+       maxDeepBoost:-9, maxTotalBoost:-150, blockCap:70 }
+};
+function energyOf(dateStr){
+  const v = state.energy && state.energy[dateStr];
+  return ENERGY[v] ? v : 2;          // 默认「一般」
+}
+function setEnergy(dateStr, lv){
+  if(!state.energy) state.energy = {};
+  if(energyOf(dateStr) === lv){ delete state.energy[dateStr]; }
+  else state.energy[dateStr] = lv;
+  delete state.days[dateStr];
+  delete state.cleared[dateStr];
+  save(); renderToday(); renderWeek();
+}
+function energyInfo(dateStr){ return ENERGY[energyOf(dateStr)]; }
+
+/* 今日小结：一天过半后，用一句话告诉你「今天到底做成了什么」
+   不评判，只陈述事实——因为评判会让人想逃避。 */
+function renderSummary(dateStr, blocks, doneSet, isToday, study){
+  const box = $('summaryBox');
+  if(!box) return;
+  if(!isToday || !study || !study.length || nowMin() < 17*60){ box.innerHTML=''; return; }
+
+  const doneBlocks = study.filter(b=>doneSet.has(b.id));
+  const doneMin = doneBlocks.reduce((a,b)=>a+(b.e-b.s),0);
+  const planMin  = study.reduce((a,b)=>a+(b.e-b.s),0);
+  const pct = Math.round(doneMin / Math.max(1, planMin) * 100);
+  const deepDone = doneBlocks.filter(b=>b.type==='deep').length;
+
+  // 剩余还没到的块
+  const nm = nowMin();
+  const left = study.filter(b=> b.e > nm && !doneSet.has(b.id)).length;
+
+  let tone, line;
+  if(pct >= 80){ tone='good'; line='今天基本按计划做完了。'; }
+  else if(pct >= 50){ tone='mid'; line='完成了一半多，剩下的事明天还能补。'; }
+  else if(pct > 0){ tone='low'; line='做了 '+Math.round(doneMin)+' 分钟。有开始就不算白过。'; }
+  else { tone='none'; line='今天还没开始。现在挑最小的一段做 15 分钟也行。'; }
+
+  box.innerHTML =
+    '<div class="sum sum-'+tone+'">'+
+      '<div class="sum-top">'+
+        '<span class="sum-t">今日小结</span>'+
+        '<span class="sum-pct">'+pct+'%</span>'+
+      '</div>'+
+      '<div class="sum-line">'+line+'</div>'+
+      '<div class="sum-meta">学习 '+Math.round(doneMin)+' / '+Math.round(planMin)+' 分钟'+
+        (deepDone ? ' · 啃了 '+deepDone+' 段新内容' : '')+
+        (left ? ' · 还剩 '+left+' 段' : '')+
+      '</div>'+
+    '</div>';
+}
+function tdNoteText(lv){
+  const e = ENERGY[lv];
+  return lv===1 ? '按「快力竭」排：只复习，不硬撑'
+       : lv===3 ? '按「充沛」排：多排一段新内容'
+       : '按「一般」排';
 }
 
 /* 某天安排：有存档用存档，没有就生成并存档 */
@@ -1153,6 +1342,42 @@ function renderToday(){
     ban.innerHTML = '';
   }
 
+
+  // ---- 精力自评 ----
+  const lv0 = energyOf(dateStr);
+  const enOpts = $('enOpts');
+  if(enOpts){
+    const STYLE = {
+      3:{c:'#c85a3c', bg:'#fcece7'},
+      2:{c:'#4a6fa5', bg:'#e9eef8'},
+      1:{c:'#2c8a63', bg:'#e6f4ec'}
+    };
+    enOpts.innerHTML = [3,2,1].map(l=>{
+      const e = ENERGY[l], st = STYLE[l];
+      return '<button class="en'+(l===lv0?' on':'')+'" data-en="'+l+'" '+
+        'style="--en-c:'+st.c+';--en-bg:'+st.bg+'">'+
+        '<span class="e">'+e.icon+'</span><span class="t">'+e.label+'</span></button>';
+    }).join('');
+    enOpts.querySelectorAll('[data-en]').forEach(b=>{
+      b.onclick = ()=>{ setEnergy(dateStr, +b.dataset.en); toast(tdNoteText(+b.dataset.en)); };
+    });
+    // 说明这一档具体改了什么，别让按钮变成没反馈的装饰
+    const en = ENERGY[lv0];
+    const cap = Math.max(45, (+state.settings.maxStudy || 300) + en.maxTotalBoost);
+    const dcap = Math.max(0, (+state.settings.maxDeep || 2) + en.maxDeepBoost);
+    let note = '按<b>'+en.label+'</b>排：学习上限 <b>'+(cap/60).toFixed(1)+' 小时</b>';
+    note += dcap>0 ? '，可排 <b>'+dcap+' 段</b>新内容' : '，<b>不排新内容</b>';
+    if(lv0===1) note += '，只做复习';
+    $('enBar').insertAdjacentHTML('afterbegin','');
+    let nEl = $('enNote');
+    if(!nEl){
+      nEl = document.createElement('div');
+      nEl.id = 'enNote'; nEl.className = 'en-note';
+      $('enBar').appendChild(nEl);
+    }
+    nEl.innerHTML = en.icon+' '+note;
+  }
+
   // stats
   const doneSet = new Set(state.done[dateStr]||[]);
   const studyBlocks = blocks.filter(b=>b.type==='deep'||b.type==='practice'||b.type==='light');
@@ -1171,11 +1396,15 @@ function renderToday(){
     '</div>'+
     '<div class="stat"><div class="v">'+Math.round(freeMin/60*10)/10+'<small>h</small></div><div class="k">空闲</div></div>';
 
+  // ---- 今日小结：17 点后、今天有学习块时出现 ----
+  renderSummary(dateStr, blocks, doneSet, isToday, studyBlocks);
+
   // timeline
   const tl = $('tl');
   tl.innerHTML = '';
   const cleared = !!(state.pause || state.cleared[dateStr]);
-  const cr = $('clearRow'); if(cr) cr.style.display = blocks.length ? 'flex' : 'none';
+  const cr = $('btnClearDay');
+  if(cr) cr.style.display = blocks.length ? '' : 'none';
   if(!blocks.length){
     if(cleared && (active.length || weekTotal)){
       tl.innerHTML = '<div class="empty"><div class="big">◷</div>这天的安排已清空。'+
@@ -1214,6 +1443,7 @@ function renderToday(){
     if(done) row.classList.add('is-done');
     else if(isNow) row.classList.add('is-now');
     else if(isPast) row.classList.add('is-past');
+    if(b.clash) row.classList.add('is-clash');
 
     row.innerHTML =
       '<div class="tg"><div class="t1">'+m2t(b.s)+'</div><div class="t2">'+m2t(b.e)+'</div></div>'+
@@ -1281,11 +1511,18 @@ function updateNowBar(blocks, isToday){
     nb.classList.remove('warn');
     nb.style.setProperty('--nbc', T.color);
     const pct = Math.min(100, Math.round((nm - cur.s) / Math.max(1, cur.e - cur.s) * 100));
-    $('nbL1').textContent = T.label + ' · 还剩 ' + Math.ceil(cur.e-nm) + ' 分钟';
+    const leftMin = Math.ceil(cur.e-nm);
+    // 学习块：点一下就能勾完成，不用滚到那一条
+    const canDone = (cur.type!=='class' && cur.type!=='commute');
+    const isDone = canDone && (state.done[todayStr()]||[]).includes(cur.id);
+    $('nbL1').textContent = isDone ? '已完成 · 还剩 '+leftMin+' 分钟'
+      : T.label + ' · 还剩 ' + leftMin + ' 分钟';
     $('nbL2').textContent = cur.name;
-    $('nbR').innerHTML = Math.ceil(cur.e-nm)+'<small>分</small>';
+    $('nbR').innerHTML = leftMin+'<small>分</small>';
     const bar = $('nbProg');
     if(bar) bar.style.width = pct + '%';
+    nb.dataset.curid = canDone ? cur.id : '';
+    nb.classList.toggle('clickable', canDone);
   } else {
     const nxt = blocks.find(b=> b.s > nm);
     if(nxt){
@@ -1335,12 +1572,24 @@ function renderWeek(){
   if(!list.length){
     el.innerHTML = '<div class="li"><div class="info"><div class="n1" style="color:var(--tx2);font-weight:500">'+WEEK[curDow-1]+' 没有课</div></div></div>';
   } else {
-    el.innerHTML = list.map(c=>{
+    // 检出同时段的冲突课（不同门课时间重叠）
+    const clashIdx = {};
+    for(let i=0;i<list.length;i++){
+      for(let j=i+1;j<list.length;j++){
+        const A = list[i], B = list[j];
+        if(t2m(A.start) < t2m(B.end) && t2m(B.start) < t2m(A.end)){
+          if(A.name !== B.name){ clashIdx[i] = true; clashIdx[j] = true; }
+        }
+      }
+    }
+    el.innerHTML = list.map((c,i)=>{
       const s=t2m(c.start), e=t2m(c.end);
       const on = weekHit(c.weeks, wkNow);
-      return '<div class="li'+(on?'':' off')+'"><div class="bar" style="background:var(--c-class)'+(on?'':';opacity:.28')+'"></div>'+
+      const bad = !!clashIdx[i];
+      return '<div class="li'+(on?'':' off')+'"><div class="bar" style="background:'+(bad?'#c85a3c':'var(--c-class)')+(on?'':';opacity:.28')+'"></div>'+
         '<div class="info"><div class="n1">'+esc(c.name)+
-          '<span class="wtag'+(on?'':' off')+'">'+esc(weeksLabel(c.weeks))+'</span></div>'+
+          '<span class="wtag'+(on?'':' off')+'">'+esc(weeksLabel(c.weeks))+'</span>'+
+          (bad?'<span class="wtag" style="background:#fdece7;color:#c85a3c">时间冲突</span>':'')+'</div>'+
         '<div class="n2">'+esc(c.start)+'–'+esc(c.end)+(c.place?' · '+esc(c.place):'')+' · '+durText(e-s)+'</div></div>'+
         '<button class="del" data-del="'+c.id+'">✕</button></div>';
     }).join('');
@@ -2124,6 +2373,18 @@ function bindStatic(){
 
   $('mask').onclick = closeSheet;
   $('sheet').addEventListener('click', e=> e.stopPropagation());
+
+  // 底部实时条：点一下直接完成当前这段，不用滚回去找
+  $('nowbar').addEventListener('click', ()=>{
+    const id = $('nowbar').dataset.curid;
+    if(!id) return;
+    const ds = todayStr();
+    const arr = state.done[ds] || (state.done[ds]=[]);
+    const i = arr.indexOf(id);
+    if(i>=0){ arr.splice(i,1); toast('已取消完成'); }
+    else { arr.push(id); toast('✓ 完成'); }
+    save(); renderToday();
+  });
 
   $('cManual').onclick = ()=>{
     const row = $('cManualRow');
