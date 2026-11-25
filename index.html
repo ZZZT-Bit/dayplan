@@ -57,6 +57,7 @@ header.scrolled{border-bottom-color:var(--line)}
   padding:10px 13px;border-radius:12px;margin:0 0 12px;display:flex;gap:8px;align-items:center;
   line-height:1.5}
 .banner b{font-weight:650}
+.banner-warn{background:#fdeee9;border-color:#f3d7cf;color:#a8442c}
 .banner button{margin-left:auto;background:none;border:none;color:#8a6a1e;font-size:12.5px;
   text-decoration:underline;padding:2px 0;cursor:pointer;white-space:nowrap;font-weight:600}
 
@@ -290,6 +291,9 @@ nav button.on::before{content:"";position:absolute;top:6px;width:4px;height:4px;
 .td .x:active{background:#fdeae4;color:#c85a3c}
 .td-empty{padding:28px 18px;text-align:center;color:var(--tx3);font-size:12.5px;line-height:1.7}
 .td-late{color:#c85a3c;font-weight:600}
+.td-time{color:var(--acc);font-weight:650}
+.td .tx{cursor:pointer}
+.td .tx:active{opacity:.65}
 
 /* form */
 .form{background:#fff;border-radius:15px;border:1px solid var(--line);padding:14px;
@@ -396,6 +400,25 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
 /* 操作区 */
 .acts{display:flex;gap:9px;margin:20px 0 12px}
 .acts .btn{flex:1;padding:13px 16px;font-size:14px;border-radius:12px}
+
+/* 本周回顾 */
+.rv-sum{background:#f8f9fb;border-radius:14px;padding:16px;margin-bottom:16px;text-align:center}
+.rv-big{font-size:34px;font-weight:250;letter-spacing:-1.5px;color:var(--tx);
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.rv-big small{font-size:13px;font-weight:500;color:var(--tx2);margin-left:4px;letter-spacing:0}
+.rv-sub{font-size:12px;color:var(--tx2);margin-top:8px;line-height:1.6}
+.rv-sub2{font-size:11.5px;color:var(--tx3);margin-top:3px}
+.rv-list{display:flex;flex-direction:column;gap:5px}
+.rv-row{display:flex;align-items:center;gap:10px;padding:3px 0}
+.rv-day{width:38px;flex:none;font-size:11.5px;color:var(--tx2);text-align:right;
+  font-variant-numeric:tabular-nums}
+.rv-today .rv-day{color:var(--tx);font-weight:650}
+.rv-bar{flex:1;height:16px;background:#f3f2ef;border-radius:5px;overflow:hidden}
+.rv-bar i{display:block;height:100%;background:linear-gradient(90deg,#8fb8ef,#4a7fc4);
+  border-radius:5px;transition:width .35s ease}
+.rv-zero .rv-bar i{background:transparent}
+.rv-num{width:46px;flex:none;font-size:11px;color:var(--tx2);text-align:right;
+  font-variant-numeric:tabular-nums}
 
 /* 5 分钟启动按钮 */
 .kick{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;
@@ -579,6 +602,17 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
         <div style="flex:1"><div class="lbl" style="margin:0 0 5px">午饭</div><input type="time" id="sLunch"></div>
         <div style="flex:1"><div class="lbl" style="margin:0 0 5px">晚饭</div><input type="time" id="sDinner"></div>
       </div>
+      <div class="frow" style="margin-top:2px">
+        <div style="flex:1"><div class="lbl" style="margin:0 0 5px">每餐多久</div>
+          <select id="sMealLen">
+            <option value="20">20 分钟（很赶）</option>
+            <option value="30">30 分钟（早饭）</option>
+            <option value="40">40 分钟</option>
+            <option value="50">50 分钟（正常）</option>
+            <option value="60">60 分钟（宽裕）</option>
+          </select></div>
+      </div>
+      <div class="hint" style="margin-top:9px">三餐一定会排上。课太满时会自动压缩到 20 分钟，缺的会在顶部提示你。</div>
       <div class="hint" id="crossHint" style="margin-top:10px;display:none"></div>
     </div>
 
@@ -655,6 +689,12 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
         <button class="btn ghost sm block" id="btnTest">试听提醒铃声</button>
       </div>
       <div class="hint">只有页面开着（含切到别的 App 后仍在后台）时，应用内提醒才会响。想让手机在 App 关掉时也准时叫住你，用「今天」页的导出日历。</div>
+    </div>
+
+    <div class="sect">回顾</div>
+    <div class="form">
+      <div class="frow"><button class="btn ghost sm block" id="btnReview">📊 看看这周做了什么</button></div>
+      <div class="hint">按天列出完成情况，看看趋势。不评价，只陈述。</div>
     </div>
 
     <div class="sect">数据</div>
@@ -952,6 +992,43 @@ function todoHTML(list, overdueFirst){
 function bindTodoRows(scope){
   scope.querySelectorAll('[data-tg]').forEach(b=> b.onclick = ()=> toggleTodo(b.dataset.tg));
   scope.querySelectorAll('[data-rm]').forEach(b=> b.onclick = ()=> delTodo(b.dataset.rm));
+  // 点文字区域 = 给这条待办设一个时间点（不设就是普通清单）
+  scope.querySelectorAll('[data-set]').forEach(el=>{
+    el.onclick = (ev)=>{
+      if(ev.target.closest('[data-tg]') || ev.target.closest('[data-rm]')) return;
+      openTodoTime(el.dataset.set);
+    };
+  });
+}
+/* 给待办设时间点：到点会响铃提醒 */
+function openTodoTime(id){
+  const t = (state.todos||[]).find(x=>x.id===id);
+  if(!t) return;
+  const cur = t.atMin != null ? pad(Math.floor(t.atMin/60))+':'+pad(t.atMin%60) : '';
+  const sh = $('sheetIn');
+  sh.innerHTML =
+    '<h3>什么时候提醒</h3>'+
+    '<div class="hint" style="margin:0 0 12px">'+esc(t.text)+'</div>'+
+    '<input type="time" id="ttTime" value="'+(cur||'20:00')+'">'+
+    '<div class="frow" style="margin-top:16px">'+
+      '<button class="btn ghost sm" id="ttClear" style="flex:1">取消提醒</button>'+
+      '<button class="btn sm" id="ttSave" style="flex:2">设好</button>'+
+    '</div>'+
+    '<div class="hint">只有页面开着时才会响。想让手机关掉 App 也响，用「导出整周」进系统日历。</div>';
+  $('ttSave').onclick = ()=>{
+    const v = $('ttTime').value;
+    if(!v){ toast('选个时间'); return; }
+    t.atMin = t2m(v);
+    t.day = todayStr();
+    save(); closeSheet(); renderTodo();
+    toast('到 '+v+' 会提醒你');
+  };
+  $('ttClear').onclick = ()=>{
+    delete t.atMin;
+    save(); closeSheet(); renderTodo();
+    toast('已取消提醒');
+  };
+  openSheet();
 }
 function renderTodo(){
   const left = state.todos.filter(t=>!t.done).length;
@@ -1006,10 +1083,15 @@ function tdRow(t, now){
       const p = d.split('-');
       meta = '<span class="td-late">'+(+p[1])+'/'+(+p[2])+'</span>';
     }
+    // 设了时间点的待办，显示几点的钟
+    if(t.atMin != null){
+      const h = Math.floor(t.atMin/60), mi = t.atMin%60;
+      meta = '<span class="td-time">⏰ '+pad(h)+':'+pad(mi)+'</span>' + (meta?' · '+meta:'');
+    }
   }
   return '<div class="td'+(t.done?' done':'')+'">'+
     '<button class="box" data-tg="'+t.id+'" aria-label="'+(t.done?'取消完成':'完成')+'"></button>'+
-    '<div class="tx"><div class="tt">'+esc(t.text)+'</div>'+
+    '<div class="tx" data-set="'+t.id+'"><div class="tt">'+esc(t.text)+'</div>'+
       (meta?'<div class="tm">'+meta+'</div>':'')+'</div>'+
     '<button class="x" data-rm="'+t.id+'" aria-label="删除">✕</button></div>';
 }
@@ -1037,47 +1119,108 @@ function generatePlan(dateStr){
 
   const fixed = classes.slice();
 
-  // ---- 上课前留出去教室的时间 ----
-  // 每节课前 30 分钟占成「去教室」，这样智能安排不会把这段时间排给学习。
+  // 「去教室」在下面、排完饭之后再生成——否则它会抢走早饭的位置
+
+  // ---- 吃饭：三餐必须排上，一顿都不能少 ----
+  // 注意顺序：先排饭，再排「去教室」。
+  // 因为 7:30 有课时，若先去教室会占掉 7:00-7:30，早饭就被挤到课后了。
+  // 起床先吃饭，再去教室，才符合真实生活。
+  const MEAL_LEN = Math.max(20, Math.min(60, +st.mealLen || 50));
+  const MEALS = [
+    // 早饭：起床就吃（会在上课前找位，比上课后吃合理得多）
+    { name:'早饭', anchor: wake,           maxShift: 150, dur:Math.min(30, MEAL_LEN), preClass:true },
+    { name:'午饭', anchor: t2m(st.lunch),   maxShift: 210, dur:MEAL_LEN },
+    { name:'晚饭', anchor: t2m(st.dinner),  maxShift: 210, dur:MEAL_LEN }
+  ];
+  MEALS.forEach(m=>{
+    const from = Math.max(m.anchor, wake);
+    const until = Math.min(from + m.maxShift, dayEnd);
+    const durs = [m.dur, 40, 30, 20].filter((d,i,a)=> d <= m.dur && a.indexOf(d) === i);
+
+    // 早饭特殊处理：起床后先吃，贴着第一节课结束之前也行。
+    // 关键：找位时只避开「课」，不避开「去教室」（去教室是后生成的，还不存在）。
+    if(m.preClass){
+      const P2 = [m.dur, 40, 30, 20].filter((d,i,a)=> d <= m.dur && a.indexOf(d) === i);
+      for(const d of P2){
+        // 先试「起床后立刻」——这是最符合直觉的位置
+        for(let s = wake; s + d <= Math.min(wake + m.maxShift, dayEnd); s += 5){
+          const e = s + d;
+          const hit = fixed.find(o=> s<o.e && e>o.s);
+          if(!hit){
+            fixed.push({id:autoId(dateStr,'meal',s),type:'meal',fixed:true,name:m.name,s,e,place:''});
+            return;
+          }
+          // 撞上了就跳到障碍末尾继续试
+          s = hit.e - 5;
+        }
+      }
+    }
+
+    for(const d of durs){
+      let s = from;
+      for(let guard=0; guard<50; guard++){
+        const e = s + d;
+        if(e > until) break;
+        const hit = fixed.find(o=> s<o.e && e>o.s);
+        if(!hit){
+          fixed.push({id:autoId(dateStr,'meal',s),type:'meal',fixed:true,name:m.name,s,e,place:''});
+          return;
+        }
+        s = hit.e;
+      }
+    }
+    // 实在排不下（锚点 + 3.5 小时内全被占满）。
+    // 保守做法：在「锚点 ± 4 小时」这个更宽的范围内找空隙，仍然拒绝跨到别的餐段。
+    // 宽范围也找不到，就承认排不下（真实课表不会一天 14 小时连轴转）。
+    const wide0 = Math.max(wake, m.anchor - 240);
+    const wide1 = Math.min(dayEnd, m.anchor + 240);
+    for(const d of [20, 15]){
+      let s = wide0;
+      for(let guard=0; guard<60; guard++){
+        const e = s + d;
+        if(e > wide1) break;
+        const hit = fixed.find(o=> s<o.e && e>o.s);
+        if(!hit){
+          fixed.push({id:autoId(dateStr,'meal',s),type:'meal',fixed:true,name:m.name,s,e,place:''});
+          return;
+        }
+        s = hit.e;
+      }
+    }
+  });
+
+  // ---- 三餐排完了，现在才排「去教室」----
+  // 顺序很重要：先去教室会占掉起床后那半小时，把早饭挤到课后。
   const LEAD = Math.max(0, +st.commute || 0);
   if(LEAD > 0){
     classes.forEach(c=>{
-      const s = c.s - LEAD;
-      if(s < wake) return;                       // 早于起床，没意义
       const e = c.s;
-      // 和已占用的块重叠就跳过（比如前一节刚下课）
-      const hit = fixed.find(o=> o !== c && s < o.e && e > o.s);
-      if(hit) return;
+      let s = c.s - LEAD;
+      if(s < wake) return;                       // 早于起床，没意义
+      // 和饭、其他课重叠就缩短，最短留 10 分钟
+      for(let guard=0; guard<8; guard++){
+        const hit = fixed.find(o=> o !== c && s < o.e && e > o.s);
+        if(!hit) break;
+        s = hit.e;
+        if(e - s < 10) return;
+      }
       fixed.push({ id:autoId(dateStr,'commute',s), type:'commute', fixed:true,
                    name:'去教室 · '+c.name, place:c.place||'', s, e, forClass:c.id });
     });
   }
 
-  // ---- 吃饭：撞课就在「合理时段」内找空位，绝不错乱到别的饭点 ----
-  // 每顿饭有自己的可接受窗口；窗口内实在挤不下就跳过这顿，而不是顺延到晚上
-  function placeMeal(prefMin, dur, name, winFrom, winTo){
-    let s = Math.max(prefMin, wake, winFrom);
-    const limit = Math.min(winTo, dayEnd);
-    for(let guard=0; guard<14; guard++){
-      const e = s+dur;
-      if(e > limit) return;              // 超出本饭点时窗：这顿不排
-      const hit = fixed.find(o=> s<o.e && e>o.s);
-      if(!hit){
-        fixed.push({id:autoId(dateStr,'meal',s),type:'meal',fixed:true,name,s,e,place:''});
-        return;
-      }
-      s = hit.e;
-    }
-  }
-  const LUNCH = t2m(st.lunch), DINNER = t2m(st.dinner);
-  placeMeal(wake,             30, '早饭', wake,        wake+180);   // 起床后 3 小时内
-  placeMeal(LUNCH,            50, '午饭', LUNCH-90,    LUNCH+180);  // 午饭前后有弹性
-  placeMeal(DINNER,           50, '晚饭', DINNER-90,   DINNER+180); // 晚饭前后有弹性
-
   // ---- 饭后不立刻学习 ----
+  // 只有「饭吃得够久」才需要额外歇。压缩成 20 分钟的短餐说明那天很赶，
+  // 这时候再塞一段 15 分钟休息只会把时间轴塞满，得不偿失。
   fixed.slice().forEach(m=>{
     if(m.type!=='meal') return;
-    const rest = m.name==='午饭' ? 25 : 15;
+    const ate = m.e - m.s;
+    if(ate < 30) return;                       // 短餐：不额外歇
+    const rest = m.name==='午饭' ? 25 : (ate >= 45 ? 15 : 10);
+    // 后面紧跟着课/去教室就不歇了（没时间）
+    const nextBusy = fixed.some(o=> o !== m && o.s >= m.e && o.s - m.e < rest &&
+                                    (o.type === 'class' || o.type === 'commute'));
+    if(nextBusy) return;
     if(m.e + rest <= dayEnd){
       fixed.push({id:autoId(dateStr,'rest',m.e),type:'rest',fixed:true,
         name: m.name==='午饭' ? '午休 · 走动' : '歇一下',
@@ -1486,6 +1629,53 @@ function stopKick(done, auto){
   kickBlockId = null;
 }
 
+/* ---------------- 本周回顾 ----------------
+   把散在各天的完成记录汇总成一张表，让人看到趋势而不是单日成绩。
+   刻意不排名、不打分，只给事实和一个粗略的方向感。 */
+function openReview(){
+  const rows = [];
+  const WD = ['日','一','二','三','四','五','六'];
+  let totalMin = 0, totalN = 0, totalDeep = 0, activeDays = 0;
+  for(let i=13; i>=0; i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = ymd(d);
+    syncHistoryMinutes(ds);
+    const recs = (state.history||{})[ds] || [];
+    const min = recs.reduce((a,x)=> a + (x.min||0), 0);
+    const deep = recs.filter(x=>x.type==='deep').length;
+    totalMin += min; totalN += recs.length; totalDeep += deep;
+    if(recs.length) activeDays++;
+    const isToday = i === 0;
+    const bar = Math.min(100, Math.round(min/300*100));
+    rows.push(
+      '<div class="rv-row'+(min?'':' rv-zero')+(isToday?' rv-today':'')+'">'+
+        '<div class="rv-day">'+(isToday?'今天':'周'+WD[d.getDay()])+'</div>'+
+        '<div class="rv-bar"><i style="width:'+bar+'%"></i></div>'+
+        '<div class="rv-num">'+(recs.length ? Math.round(min)+'分' : '—')+'</div>'+
+      '</div>');
+  }
+  const hrs = (Math.round(totalMin/6)/10);
+  const avg = activeDays ? Math.round(totalMin/activeDays) : 0;
+
+  const sh = $('sheetIn');
+  sh.innerHTML =
+    '<h3>最近 14 天</h3>'+
+    '<div class="rv-sum">'+
+      '<div class="rv-big">'+hrs+'<small>小时</small></div>'+
+      '<div class="rv-sub">完成 '+totalN+' 段 · 有 '+activeDays+' 天在做事'+
+        (totalDeep ? ' · 啃了 '+totalDeep+' 段新内容' : '')+'</div>'+
+      '<div class="rv-sub2">'+(activeDays ? '做事的日子里，平均每天 '+avg+' 分钟' : '还没有记录')+'</div>'+
+    '</div>'+
+    '<div class="rv-list">'+rows.join('')+'</div>'+
+    '<div class="hint" style="text-align:center;margin-top:14px">'+
+      (activeDays >= 7 ? '节奏稳定，保持就好。'
+       : activeDays >= 3 ? '断断续续也正常。关键是断了能接上。'
+       : totalN ? '有几天在做，那就够了。'
+       : '还没有记录。今天做一段，这里就会有第一根柱子。')+
+    '</div>';
+  openSheet();
+}
+
 /* ---------------- 完成历史 ----------------
    勾完之后不该只留在页面上，还要留个记录，让人能回看「我这周做成了什么」。 */
 function recordDone(dateStr, block){
@@ -1498,6 +1688,17 @@ function recordDone(dateStr, block){
   const keys = Object.keys(state.history).sort();
   while(keys.length > 60){ delete state.history[keys.shift()]; }
 }
+/* 编辑块之后，历史里的分钟数会变旧。
+   统一在晒数据前用「当前块的真实时长」校正，避免统计虚高。 */
+function syncHistoryMinutes(dateStr){
+  const recs = (state.history||{})[dateStr];
+  if(!recs || !recs.length) return;
+  const blocks = state.days[dateStr] || [];
+  recs.forEach(r=>{
+    const b = blocks.find(x=>x.id===r.id);
+    if(b){ r.min = b.e - b.s; r.type = b.type; r.name = b.name; }
+  });
+}
 function unrecordDone(dateStr, id){
   if(!state.history || !state.history[dateStr]) return;
   state.history[dateStr] = state.history[dateStr].filter(x=>x.id!==id);
@@ -1509,6 +1710,7 @@ function historyStats(days){
   for(let i=0;i<days;i++){
     const d = new Date(); d.setDate(d.getDate()-i);
     const ds = ymd(d);
+    syncHistoryMinutes(ds);                    // 用当前块时长校正
     (h[ds]||[]).forEach(x=>{ min += x.min||0; n++; if(x.type==='deep') deep++; });
   }
   return { min, n, deep };
@@ -1543,7 +1745,13 @@ function renderToday(){
   } else {
     ban.innerHTML = '';
   }
-
+  // 缺餐提醒：排在前面，一眼就能看到
+  const mealWarn = blocks.length && ['早饭','午饭','晚饭']
+    .filter(n => !blocks.some(b=>b.type==='meal' && b.name===n));
+  if(mealWarn && mealWarn.length){
+    ban.innerHTML = '<div class="banner banner-warn"><span>🍚</span><span>今天<b>'+
+      mealWarn.join('、')+'</b>没排上（课太满）。到点自己吃一口，别空着。</span></div>' + ban.innerHTML;
+  }
 
   // ---- 精力自评 ----
   const lv0 = energyOf(dateStr);
@@ -1587,6 +1795,9 @@ function renderToday(){
   const checkables = blocks.filter(b=>b.type!=='class' && b.type!=='commute');
   const doneN = checkables.filter(b=>doneSet.has(b.id)).length;
   const classMin = blocks.filter(b=>b.type==='class').reduce((a,b)=>a+(b.e-b.s),0);
+  // 三餐自检：缺哪一顿就在横幅里明说，不要让人到点才发现没饭吃
+  const mealNames = blocks.filter(b=>b.type==='meal').map(b=>b.name);
+  const missingMeals = ['早饭','午饭','晚饭'].filter(n=> !mealNames.includes(n));
   const freeMin = Math.max(0, (t2m(state.settings.sleep)>t2m(state.settings.wake)
         ? t2m(state.settings.sleep)-t2m(state.settings.wake) : 900) - classMin);
   $('stats').innerHTML =
@@ -1914,6 +2125,7 @@ function openEdit(id){
     b.place = $('edPlace') ? $('edPlace').value.trim() : '';
     b.s = s; b.e = e; b.auto = false;
     blocks.sort((x,y)=>x.s-y.s);
+    syncHistoryMinutes(curDate);   // 改时间/类型后，历史跟着更新
     save(); closeSheet(); renderToday(); toast('已保存');
   };
   $('edDel').onclick = ()=>{
@@ -2103,6 +2315,18 @@ function checkAlarms(){
         fireAlarm(lead+' 分钟后上课', b.name + (b.place? ' @'+b.place : ''), m2t(b.s));
         save();
       }
+    }
+  });
+
+  // 带时间点的待办也要响（比如「20:00 给学长发邮件」）
+  (state.todos||[]).forEach(t=>{
+    if(t.done || t.atMin == null) return;
+    const k = 'todo:'+t.id;
+    if(noted.includes(k)) return;
+    if(nm >= t.atMin && nm - t.atMin < 1.2){
+      noted.push(k);
+      fireAlarm('待办提醒', t.text, m2t(t.atMin));
+      save();
     }
   });
 }
@@ -2436,6 +2660,7 @@ function fillSettings(){
   $('sMaxStudy').value = String(s.maxStudy || 300);
   $('sLead').value = String(s.lead);
   $('sCommute').value = String(s.commute == null ? 30 : s.commute);
+  $('sMealLen').value = String(s.mealLen == null ? 50 : s.mealLen);
   $('sTermStart').value = s.termStart || DEFAULT_TERM_START;
   const wNow = weekOfDate(todayStr());
   const th = $('termHint');
@@ -2458,7 +2683,7 @@ function bindSettings(){
       toast('已更新，安排已重排');
     };
   });
-  const num = {sDeepLen:'deepLen', sPracLen:'pracLen', sMaxDeep:'maxDeep', sBuf:'buffer', sLead:'lead', sMaxStudy:'maxStudy', sCommute:'commute'};
+  const num = {sDeepLen:'deepLen', sPracLen:'pracLen', sMaxDeep:'maxDeep', sBuf:'buffer', sLead:'lead', sMaxStudy:'maxStudy', sCommute:'commute', sMealLen:'mealLen'};
   Object.keys(num).forEach(id=>{
     $(id).onchange = ()=>{
       state.settings[num[id]] = +$(id).value;
@@ -2486,6 +2711,7 @@ function bindSettings(){
     });
   };
   $('btnTest').onclick = ()=>{ initAudio(); beep(3); toast('这就是提醒声'); };
+  $('btnReview').onclick = ()=> openReview();
   $('btnExport').onclick = ()=>{
     const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -2737,7 +2963,21 @@ if(state.seeded){
 bindStatic();
 renderAll();
 checkAlarms();
+
+// 跨天自愈：应用一直开着过零点时，自动切到新的一天
+let lastSeenDay = todayStr();
+function checkDayRollover(){
+  const now = todayStr();
+  if(now !== lastSeenDay){
+    lastSeenDay = now;
+    curDate = now;                       // 跟着翻页，别停在昨天
+    renderAll();
+    toast('新的一天 · 第 '+weekOfDate(now)+' 周');
+  }
+}
+
 setInterval(()=>{
+  checkDayRollover();
   if(curDate === todayStr()) renderToday();
   else updateNowBar([], false);
 }, 20000);
@@ -2746,6 +2986,7 @@ setInterval(checkAlarms, 15000);
 // 从后台切回来时刷新
 document.addEventListener('visibilitychange', ()=>{
   if(!document.hidden){
+    checkDayRollover();
     if(curDate === todayStr()) renderToday();
     checkAlarms();
   }
