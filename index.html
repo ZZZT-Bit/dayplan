@@ -191,6 +191,8 @@ nav button.on::before{content:"";position:absolute;top:6px;width:4px;height:4px;
 .sect{margin:22px 0 9px;font-size:12px;font-weight:700;color:var(--tx2);letter-spacing:.2px;
   display:flex;align-items:center;gap:8px}
 .sect .sp{flex:1}
+.sect-note{font-weight:500;font-size:10px;color:var(--tx3);background:#f3f2ef;
+  padding:1px 6px;border-radius:5px;letter-spacing:.2px}
 
 /* weekday chips */
 .chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
@@ -487,12 +489,14 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
 
     <!-- 精力自评：一排三个，点一下就改变今天的排法 -->
     <div class="en-bar" id="enBar">
-      <div class="en-q">今天感觉怎么样？</div>
+      <div class="en-q" id="enQ">今天感觉怎么样？</div>
       <div class="en-opts" id="enOpts"></div>
     </div>
 
     <!-- 待办：首屏常驻，不用切页 -->
-    <div class="sect" style="margin-top:14px">待办 <span class="sp"></span>
+    <div class="sect" style="margin-top:14px">待办
+      <span class="sect-note" id="tdScopeNote" style="display:none">通用清单</span>
+      <span class="sp"></span>
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--tx3)" id="tdHomeCount"></span>
     </div>
     <div class="td-add" style="margin:4px 0 10px">
@@ -504,7 +508,7 @@ body.subpage{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8p
     <!-- 今日小结：只在傍晚之后、且今天有安排时出现 -->
     <div id="summaryBox"></div>
 
-    <div class="sect" style="margin-top:20px">今天的时间安排</div>
+    <div class="sect" style="margin-top:20px" id="tlTitle">今天的时间安排</div>
     <div class="tl" id="tl"></div>
 
     <!-- 操作区：主要动作一行，次要动作收成细线按钮 -->
@@ -1430,7 +1434,11 @@ function energyInfo(dateStr){ return ENERGY[energyOf(dateStr)]; }
 function renderSummary(dateStr, blocks, doneSet, isToday, study){
   const box = $('summaryBox');
   if(!box) return;
-  if(!isToday || !study || !study.length || nowMin() < 17*60){ box.innerHTML=''; return; }
+  if(!study || !study.length){ box.innerHTML=''; return; }
+
+  // 今天：傍晚之后才出现（白天还没做完，说小结没意义）
+  // 别的日期：随时显示——那天的账已经结了，不存在「还没到点」
+  if(isToday && nowMin() < 17*60){ box.innerHTML=''; return; }
 
   const doneBlocks = study.filter(b=>doneSet.has(b.id));
   const doneMin = doneBlocks.reduce((a,b)=>a+(b.e-b.s),0);
@@ -1438,17 +1446,20 @@ function renderSummary(dateStr, blocks, doneSet, isToday, study){
   const pct = Math.round(doneMin / Math.max(1, planMin) * 100);
   const deepDone = doneBlocks.filter(b=>b.type==='deep').length;
 
-  // 剩余还没到的块
+  // 剩余：只有今天才谈「还没到的」，过去的日子所有块都已过期
   const nm = nowMin();
-  const left = study.filter(b=> b.e > nm && !doneSet.has(b.id)).length;
+  const left = isToday ? study.filter(b=> b.e > nm && !doneSet.has(b.id)).length : 0;
+  const missed = isToday ? 0 : study.filter(b=> !doneSet.has(b.id)).length;
 
   let tone;
   if(pct >= 80) tone='good';
   else if(pct >= 50) tone='mid';
   else if(pct > 0) tone='low';
   else tone='none';
-  // 文案由「今天的真实情况」生成，而不是固定几句
-  const line = dailyLine(pct, energyOf(dateStr), left, dowOf(dateStr));
+  // 文案由「那天的真实情况」生成
+  const line = isToday
+    ? dailyLine(pct, energyOf(dateStr), left, dowOf(dateStr))
+    : pastDayLine(pct, energyOf(dateStr), missed);
 
   // 近 7 天的累计：让人看到「不是一天的事」
   const st7 = historyStats(7);
@@ -1460,16 +1471,26 @@ function renderSummary(dateStr, blocks, doneSet, isToday, study){
   box.innerHTML =
     '<div class="sum sum-'+tone+'">'+
       '<div class="sum-top">'+
-        '<span class="sum-t">今日小结</span>'+
+        '<span class="sum-t">'+(isToday ? '今日小结' : '这天的小结')+'</span>'+
         '<span class="sum-pct">'+pct+'%</span>'+
       '</div>'+
       '<div class="sum-line">'+line+'</div>'+
       '<div class="sum-meta">学习 '+Math.round(doneMin)+' / '+Math.round(planMin)+' 分钟'+
         (deepDone ? ' · 啃了 '+deepDone+' 段新内容' : '')+
         (left ? ' · 还剩 '+left+' 段' : '')+
+        (missed ? ' · '+missed+' 段没做' : '')+
       '</div>'+
       (wk ? '<div class="sum-wk">'+wk+'</div>' : '')+
     '</div>';
+}
+
+/* 过去某天的一句话：不追责，只陈述。
+   昨天的账翻出来骂自己没有任何用处，只会让人不想再打开这个 App。 */
+function pastDayLine(pct, lv, missed){
+  if(pct >= 80) return '那天基本做完了。';
+  if(pct >= 50) return '那天做了一半多。';
+  if(pct > 0)   return lv === 1 ? '那天状态不好，还是做了一段。' : '那天做了一部分，够了。';
+  return missed ? '那天没做。已经过去了，不用回头算。' : '那天是空的。';
 }
 function tdNoteText(lv){
   const e = ENERGY[lv];
@@ -1755,6 +1776,15 @@ function renderToday(){
 
   // ---- 精力自评 ----
   const lv0 = energyOf(dateStr);
+  // 标题跟着日期走：看别的日子时不要说「今天」
+  const enQ = $('enQ');
+  if(enQ) enQ.textContent = isToday ? '今天感觉怎么样？' : '那天感觉怎么样？';
+  const tlT = $('tlTitle');
+  if(tlT) tlT.textContent = isToday ? '今天的时间安排'
+        : (parseYmd(dateStr).getMonth()+1)+'月'+parseYmd(dateStr).getDate()+'日的时间安排';
+  // 待办是跨天共用的清单，看别的日子时标一下，免得以为它在讲那天
+  const tdNote = $('tdScopeNote');
+  if(tdNote) tdNote.style.display = isToday ? 'none' : '';
   const enOpts = $('enOpts');
   if(enOpts){
     const STYLE = {
